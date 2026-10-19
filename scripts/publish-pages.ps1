@@ -42,15 +42,24 @@ try {
     if ($LASTEXITCODE -ne 0) { gh repo create $Repo --public --description 'RU asset register online view' | Out-Null }
     git remote add origin "https://github.com/$Repo.git"
   }
-  git add index.html
-  if ($repoMode) { git add scripts }
+  if (-not (Test-Path '.gitignore')) { Set-Content -Path '.gitignore' -Value @('*.bak*', 'pages-export/') -Encoding ASCII }
+  $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+  git add index.html .gitignore 2>&1 | Out-Null
+  if ($repoMode) { git add scripts 2>&1 | Out-Null }
+  $ErrorActionPreference = $prev
   git diff --cached --quiet
   if ($LASTEXITCODE -ne 0) {
-    git -c user.name='pakonkook-glitch' -c user.email='pakonkook-glitch@users.noreply.github.com' commit -m ("update RU Asset View " + (Get-Date -Format 'yyyy-MM-dd HH:mm') + $(if ($isRO) { ' (read-only)' } else { ' (editable)' })) | Out-Null
+    $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    git -c user.name='pakonkook-glitch' -c user.email='pakonkook-glitch@users.noreply.github.com' commit -m ("update RU Asset View " + (Get-Date -Format 'yyyy-MM-dd HH:mm') + $(if ($isRO) { ' (read-only)' } else { ' (editable)' })) 2>&1 | Out-Null
+    $ErrorActionPreference = $prev
   } else { Write-Host 'Nothing new to commit' }
-  git push -u origin main
-  if ($LASTEXITCODE -ne 0) { throw 'git push failed' }
-  gh api -X POST "repos/$Repo/pages" -f 'source[branch]=main' -f 'source[path]=/' 2>$null | Out-Null  # ignore 'already enabled'
+  $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+  git push -u origin main 2>&1 | ForEach-Object { "$_" }
+  $pushCode = $LASTEXITCODE; $ErrorActionPreference = $prev
+  if ($pushCode -ne 0) { throw 'git push failed' }
+  $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+  try { gh api -X POST "repos/$Repo/pages" -f 'source[branch]=main' -f 'source[path]=/' 2>&1 | Out-Null } catch { }  # 409 = already enabled
+  $ErrorActionPreference = $prev
   $owner, $name = $Repo.Split('/')
   $url = "https://$owner.github.io/$name/"
   Write-Host "Pages: $url"
