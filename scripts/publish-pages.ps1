@@ -45,7 +45,7 @@ try {
   if (-not (Test-Path '.gitignore')) { Set-Content -Path '.gitignore' -Value @('*.bak*', 'pages-export/') -Encoding ASCII }
   $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
   git add index.html .gitignore 2>&1 | Out-Null
-  if ($repoMode) { git add scripts 2>&1 | Out-Null }
+  if ($repoMode) { git add scripts 2>&1 | Out-Null; if (Test-Path images) { git add images 2>&1 | Out-Null } }
   $ErrorActionPreference = $prev
   git diff --cached --quiet
   if ($LASTEXITCODE -ne 0) {

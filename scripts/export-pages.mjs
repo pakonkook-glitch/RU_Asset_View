@@ -10,7 +10,7 @@
 // ความเป็นส่วนตัว: อ่านเฉพาะคอลัมน์ที่ asset-fields.json ระบุ (+ id/condition/disposal_date) — คอลัมน์ชื่อบุคคล/ราคา/ค่าเสื่อม/หมายเหตุ/รูป ถูกห้าม
 //   และตรวจซ้ำผลลัพธ์: ต้องไม่มี 'นาย' 'นาง' 'บาท' และชื่อคอลัมน์ต้องห้าม
 import { DatabaseSync } from 'node:sqlite';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -70,7 +70,20 @@ const rows = raw.map((r) => {
 const now = new Date();
 const asOf = new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(now);
 const esc = (s) => s.replace(/</g, '\\u003c');
-const cfg = { edit: !READONLY, asOf, built: now.toISOString(), ...CONF };
+// รูปที่แสดงบนเว็บสำหรับทุกคน: scripts/asset-photos.json + โฟลเดอร์ images/ (ย่อแล้ว ไม่มี EXIF)
+const SP = CONF.sitePhotos || {};
+const sitePhotos = {};
+if (SP.config && existsSync(join(here, SP.config))) {
+  const pj = JSON.parse(readFileSync(join(here, SP.config), 'utf8'));
+  const keys = new Set(rows.map((r) => r.k));
+  for (const p of pj.photos || []) {
+    if (!/^[A-Za-z0-9._-]+\.jpg$/.test(p.file)) throw new Error('bad photo file name: ' + p.file);
+    for (const f of [join(project, SP.dir, p.file), join(project, SP.thumbDir, p.file)]) if (!existsSync(f)) throw new Error('missing photo file: ' + f);
+    for (const k of p.keys) { if (!keys.has(k)) throw new Error('photo key not in DB: ' + k); if (sitePhotos[k]) throw new Error('two photos for ' + k); sitePhotos[k] = { f: p.file, kind: p.kind || 'tag' }; }
+  }
+}
+console.log('site photos:', Object.keys(sitePhotos).length, 'items');
+const cfg = { edit: !READONLY, asOf, built: now.toISOString(), ...CONF, photos: sitePhotos };
 delete cfg._comment;
 const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
@@ -170,7 +183,9 @@ function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=c
 function btn(cls,text,fn){var b=el('button',cls,text);b.type='button';if(fn)b.onclick=fn;return b}
 function link(cls,text,href){var a=el('a',cls,text);a.href=href;return a}
 var CAM='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+function sitePhoto(k){var P=CFG.photos||{};var o=P[k];if(!o)return null;var S=CFG.sitePhotos||{};return {src:S.dir+'/'+o.f,th:S.thumbDir+'/'+o.f,kind:o.kind,label:(S.labels||{})[o.kind]||''}}
 function photoEl(k,compact,cls){var L=PH[k];if(L&&L.length){var im=el('img','ra-photo'+(cls?' '+cls:''));im.src=L[0].th||L[0].d;im.alt='';im.loading='lazy';return im}
+ var sp=sitePhoto(k);if(sp){var im2=el('img','ra-photo ra-site-photo'+(cls?' '+cls:''));im2.src=compact?sp.th:sp.src;im2.alt='';im2.loading='lazy';im2.decoding='async';im2.dataset.site=sp.kind;return im2}
  var d=el('div','ra-photo ra-photo-empty'+(compact?' compact':'')+(cls?' '+cls:''));d.setAttribute('aria-label','ไม่มีรูป');d.innerHTML=CAM+'<span>ไม่มีรูป</span>';return d}
 function stTone(s){if(!s)return 'muted';if(CFG.status.good.indexOf(s)>=0)return 'good';if(CFG.status.muted.indexOf(s)>=0)return 'muted';return 'bad'}
 function chip(cls,text){return el('span','ra-chip '+cls,text)}
@@ -318,7 +333,7 @@ function renderItem(main,k){var r=rowByK(k);var p=el('section','panel ra-form-pa
  var head=el('div','ra-form-head');head.appendChild(el('h2',null,'ข้อมูลครุภัณฑ์'));var hb=el('div','ra-hero-actions');hb.appendChild(link('ra-btn ghost','← รายการทั้งหมด','#/'));
  if(r&&canEdit())hb.appendChild(link('ra-btn primary','✏️ แก้ไข','#/edit/'+encodeURIComponent(k)));if(r)hb.appendChild(link('ra-btn','🏷️ สติกเกอร์','#/stickers?ids='+encodeURIComponent(k)));head.appendChild(hb);p.appendChild(head);
  if(!r){var em=el('div','ra-empty');em.appendChild(el('div','ra-empty-icon','🧭'));em.appendChild(el('div','ra-empty-title','ไม่พบรายการนี้'));em.appendChild(el('div','muted',/^n/.test(k)?'รายการที่เพิ่มใหม่จะเห็นได้เฉพาะในเครื่องที่เพิ่ม จนกว่าจะนำเข้าฐานข้อมูล':'key: '+k));p.appendChild(em);main.appendChild(p);return}
- var g=el('div','ra-item');var left=el('div');var ph=el('div','ra-item-photo');ph.appendChild(photoEl(k,false));left.appendChild(ph);
+ var g=el('div','ra-item');var left=el('div');var ph=el('div','ra-item-photo');ph.appendChild(photoEl(k,false));left.appendChild(ph);var spi=sitePhoto(k);if(spi&&!(PH[k]&&PH[k].length)){var cap=el('div','ra-hint ra-photo-cap');if(spi.label)cap.appendChild(el('span',null,spi.label+' · '));var fl=el('a',null,'ดูรูปขนาดเต็ม');fl.href=spi.src;fl.target='_blank';fl.rel='noopener';cap.appendChild(fl);left.appendChild(cap)}
  var qr=el('div','ra-item-qr');qr.appendChild(qrBox(qrUrl(k)));qr.appendChild(el('div','ra-hint','QR ของหน้านี้'));left.appendChild(qr);g.appendChild(left);
  var right=el('div');right.appendChild(el('div','ra-item-tag',r.tag||'—'));right.appendChild(el('div','ra-item-name',r.name||'—'));
  var cl=el('div','ra-card-statusline');cl.appendChild(chip(stTone(r.status),r.status||'ไม่ระบุ'));var bd=editBadges(r);if(bd)cl.appendChild(bd);right.appendChild(cl);

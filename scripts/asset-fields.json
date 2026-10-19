@@ -3,24 +3,261 @@
   "appTitle": "RU Asset Database",
   "appSubtitle": "ครุภัณฑ์งานการเงิน",
   "siteUrl": "https://pakonkook-glitch.github.io/RU_Asset_View/",
-  "unit": { "label": "หน่วย/ห้อง (จากรหัสสถานที่)", "sourceField": "loc" },
-  "status": { "values": ["ใช้งานได้", "ชำรุด", "จำหน่ายแล้ว", "เลิกใช้งาน"], "good": ["ใช้งานได้"], "muted": ["จำหน่ายแล้ว", "เลิกใช้งาน"] },
-  "sticker": { "widthMm": 75, "heightMm": 36, "perPage": 12, "cols": 2, "fontPx": 11, "qrMm": 16, "photoMm": 20, "blankSerialLine": "batch", "footerPrefix": "กองคลัง" },
+  "unit": {
+    "label": "หน่วย/ห้อง (จากรหัสสถานที่)",
+    "sourceField": "loc"
+  },
+  "status": {
+    "values": [
+      "ใช้งานได้",
+      "ชำรุด",
+      "จำหน่ายแล้ว",
+      "เลิกใช้งาน"
+    ],
+    "good": [
+      "ใช้งานได้"
+    ],
+    "muted": [
+      "จำหน่ายแล้ว",
+      "เลิกใช้งาน"
+    ]
+  },
+  "sticker": {
+    "widthMm": 75,
+    "heightMm": 36,
+    "perPage": 12,
+    "cols": 2,
+    "fontPx": 11,
+    "qrMm": 16,
+    "photoMm": 20,
+    "blankSerialLine": "batch",
+    "footerPrefix": "กองคลัง"
+  },
   "fields": [
-    { "key": "photo",  "label": "รูปครุภัณฑ์", "type": "image", "show": ["grid", "table", "form", "sticker", "item"] },
-    { "key": "name",   "column": "asset_name", "label": "ชื่อครุภัณฑ์", "type": "text", "required": true, "full": true, "placeholder": "เช่น เครื่องคอมพิวเตอร์ Dell OptiPlex 7010", "show": ["table", "grid", "form", "sticker", "csv", "item", "search"] },
-    { "key": "tag",    "column": "asset_no", "label": "หมายเลขครุภัณฑ์", "type": "text", "unique": true, "mono": true, "placeholder": "เช่น กค.งง.-ร-69-001", "show": ["table", "grid", "form", "sticker", "csv", "item", "search"] },
-    { "key": "tag2",   "column": "asset_no_alt", "label": "หมายเลขครุภัณฑ์อื่น", "type": "text", "mono": true, "show": ["form", "csv", "item", "search"] },
-    { "key": "b",      "column": "barcode", "label": "บาร์โค้ด (B-number)", "type": "text", "unique": true, "mono": true, "placeholder": "เช่น B2010201600", "show": ["table", "grid", "form", "sticker", "csv", "item", "search"] },
-    { "key": "type",   "column": "category", "label": "ประเภท", "type": "text", "suggest": true, "placeholder": "เลือกหรือพิมพ์ประเภท", "show": ["form", "csv", "item", "search"] },
-    { "key": "date",   "column": "acquired_date_be", "label": "ว.ด.ป. ที่ได้มา (พ.ศ.)", "type": "date_be", "placeholder": "dd/mm/2569", "show": ["table", "form", "csv", "item", "search"] },
-    { "key": "fy",     "label": "ปีงบประมาณ (พ.ศ.)", "type": "year_be", "readOnly": true, "hint": "คำนวณจากวันที่ได้มา (ต.ค.–ก.ย.)", "show": ["table", "grid", "csv", "item"] },
-    { "key": "qty",    "column": "quantity", "label": "จำนวน", "type": "number", "readOnly": true, "show": ["table", "csv", "item"] },
-    { "key": "loc",    "column": "location", "label": "สถานที่ตั้ง", "type": "text", "suggest": true, "mono": true, "placeholder": "เช่น OPB1.101", "show": ["table", "grid", "form", "sticker", "csv", "item", "search"] },
-    { "key": "status", "label": "สภาพ / สถานะ", "type": "select", "show": ["table", "grid", "form", "csv", "item", "search"] },
-    { "key": "serial", "column": "serial_no", "label": "S/N เครื่อง", "type": "text", "placeholder": "เช่น RUCOM54-IT6800 (ว่างไว้ถ้ายังไม่ทราบ)", "show": ["form", "csv", "item", "search", "sticker"] },
-    { "key": "srange", "column": "serial_range", "label": "S/N ชุด (ช่วง)", "type": "text", "placeholder": "เช่น RUCOM54-IT6738 – IT6825 (88 ชุด)", "show": ["form", "csv", "item", "search", "sticker"] },
-    { "key": "specs",  "column": "specs", "label": "สเปก", "type": "textarea", "full": true, "show": ["form", "csv", "item", "search"] },
-    { "key": "note",   "label": "หมายเหตุการแก้ (เก็บในเครื่องนี้)", "type": "textarea", "full": true, "editOnly": true, "show": ["form", "csv"] }
-  ]
+    {
+      "key": "photo",
+      "label": "รูปครุภัณฑ์",
+      "type": "image",
+      "show": [
+        "grid",
+        "table",
+        "form",
+        "sticker",
+        "item"
+      ]
+    },
+    {
+      "key": "name",
+      "column": "asset_name",
+      "label": "ชื่อครุภัณฑ์",
+      "type": "text",
+      "required": true,
+      "full": true,
+      "placeholder": "เช่น เครื่องคอมพิวเตอร์ Dell OptiPlex 7010",
+      "show": [
+        "table",
+        "grid",
+        "form",
+        "sticker",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "tag",
+      "column": "asset_no",
+      "label": "หมายเลขครุภัณฑ์",
+      "type": "text",
+      "unique": true,
+      "mono": true,
+      "placeholder": "เช่น กค.งง.-ร-69-001",
+      "show": [
+        "table",
+        "grid",
+        "form",
+        "sticker",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "tag2",
+      "column": "asset_no_alt",
+      "label": "หมายเลขครุภัณฑ์อื่น",
+      "type": "text",
+      "mono": true,
+      "show": [
+        "form",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "b",
+      "column": "barcode",
+      "label": "บาร์โค้ด (B-number)",
+      "type": "text",
+      "unique": true,
+      "mono": true,
+      "placeholder": "เช่น B2010201600",
+      "show": [
+        "table",
+        "grid",
+        "form",
+        "sticker",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "type",
+      "column": "category",
+      "label": "ประเภท",
+      "type": "text",
+      "suggest": true,
+      "placeholder": "เลือกหรือพิมพ์ประเภท",
+      "show": [
+        "form",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "date",
+      "column": "acquired_date_be",
+      "label": "ว.ด.ป. ที่ได้มา (พ.ศ.)",
+      "type": "date_be",
+      "placeholder": "dd/mm/2569",
+      "show": [
+        "table",
+        "form",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "fy",
+      "label": "ปีงบประมาณ (พ.ศ.)",
+      "type": "year_be",
+      "readOnly": true,
+      "hint": "คำนวณจากวันที่ได้มา (ต.ค.–ก.ย.)",
+      "show": [
+        "table",
+        "grid",
+        "csv",
+        "item"
+      ]
+    },
+    {
+      "key": "qty",
+      "column": "quantity",
+      "label": "จำนวน",
+      "type": "number",
+      "readOnly": true,
+      "show": [
+        "table",
+        "csv",
+        "item"
+      ]
+    },
+    {
+      "key": "loc",
+      "column": "location",
+      "label": "สถานที่ตั้ง",
+      "type": "text",
+      "suggest": true,
+      "mono": true,
+      "placeholder": "เช่น OPB1.101",
+      "show": [
+        "table",
+        "grid",
+        "form",
+        "sticker",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "status",
+      "label": "สภาพ / สถานะ",
+      "type": "select",
+      "show": [
+        "table",
+        "grid",
+        "form",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "serial",
+      "column": "serial_no",
+      "label": "S/N เครื่อง",
+      "type": "text",
+      "placeholder": "เช่น RUCOM54-IT6800 (ว่างไว้ถ้ายังไม่ทราบ)",
+      "show": [
+        "form",
+        "csv",
+        "item",
+        "search",
+        "sticker"
+      ]
+    },
+    {
+      "key": "srange",
+      "column": "serial_range",
+      "label": "S/N ชุด (ช่วง)",
+      "type": "text",
+      "placeholder": "เช่น RUCOM54-IT6738 – IT6825 (88 ชุด)",
+      "show": [
+        "form",
+        "csv",
+        "item",
+        "search",
+        "sticker"
+      ]
+    },
+    {
+      "key": "specs",
+      "column": "specs",
+      "label": "สเปก",
+      "type": "textarea",
+      "full": true,
+      "show": [
+        "form",
+        "csv",
+        "item",
+        "search"
+      ]
+    },
+    {
+      "key": "note",
+      "label": "หมายเหตุการแก้ (เก็บในเครื่องนี้)",
+      "type": "textarea",
+      "full": true,
+      "editOnly": true,
+      "show": [
+        "form",
+        "csv"
+      ]
+    }
+  ],
+  "sitePhotos": {
+    "config": "asset-photos.json",
+    "dir": "images",
+    "thumbDir": "images/th",
+    "labels": {
+      "tag": "",
+      "group": "ภาพของชุดครุภัณฑ์หมายเลขเดียวกัน",
+      "model": "ภาพตัวอย่างของรุ่นนี้"
+    }
+  }
 }
