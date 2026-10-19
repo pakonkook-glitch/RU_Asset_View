@@ -76,7 +76,9 @@ const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
 // ---------- extra CSS (only what the local app has no class for) ----------
 const EXTRA_CSS = String.raw`
-.ra-app .main{max-width:1500px}
+.ra-app .main{max-width:none}
+.ra-app a.ra-linklike{color:inherit;text-decoration:none}.ra-app a.ra-linklike:hover .ra-name{color:var(--accent)}
+.ra-app a.ra-card-name{color:inherit;text-decoration:none}.ra-app a.ra-card-name:hover{color:var(--accent)}
 .ra-badges{display:inline-flex;gap:.25rem;flex-wrap:wrap;vertical-align:middle;margin-left:.35rem}
 .ra-chip.edited{background:rgba(45,212,191,.18);color:var(--accent)}
 .ra-chip.new{background:rgba(167,139,250,.2);color:#c4b5fd}
@@ -193,10 +195,11 @@ function match(r,f,skip){for(var i=0;i<DIMS.length;i++){var d=DIMS[i];if(d[0]===
  if(f.ed==='edited'&&!r._edited)return false;if(f.ed==='new'&&!r._new)return false;if(f.ed==='del'&&!r._del)return false;if(f.ed==='ph'&&!r._ph)return false;
  var q=(f.q||'').trim().toLowerCase();if(!q)return true;var h=searchHay(r);return h.replace(/\s+/g,' ').indexOf(q)>=0||h.replace(/\s+/g,'').indexOf(q.replace(/\s+/g,''))>=0}
 function facet(all,f,dim){var c={};all.forEach(function(r){if(!match(r,f,dim[0]))return;var v=dim[2](r);c[v]=(c[v]||0)+1});return c}
-var sortKey='tag',sortDir=1;
-var SORTS=[['tag','หมายเลขครุภัณฑ์'],['name','ชื่อครุภัณฑ์'],['fy','ปีงบประมาณ'],['loc','สถานที่ตั้ง'],['date','วันที่ได้มา']];
+var sortKey='_ord',sortDir=1;
+var SORTS=[['_ord','ลำดับในทะเบียน'],['tag','หมายเลขครุภัณฑ์'],['name','ชื่อครุภัณฑ์'],['fy','ปีงบประมาณ'],['loc','สถานที่ตั้ง'],['date','วันที่ได้มา']];
 function dkey(s){var m=/^(\d+)\/(\d+)\/(\d+)$/.exec(s||'');return m?(+m[3])*10000+(+m[2])*100+(+m[1]):-1}
-function cmp(a,b){var x=sv(a,sortKey),y=sv(b,sortKey);if(sortKey==='date'){x=dkey(x);y=dkey(y);if(x<0)return 1;if(y<0)return -1;return (x-y)*sortDir||thCmp(sv(a,'tag'),sv(b,'tag'))}
+function ordOf(r){var m=/^r(\d+)$/.exec(r.k);return m?+m[1]:1e9}
+function cmp(a,b){if(sortKey==='_ord')return (ordOf(a)-ordOf(b))*sortDir||thCmp(a.k,b.k);var x=sv(a,sortKey),y=sv(b,sortKey);if(sortKey==='date'){x=dkey(x);y=dkey(y);if(x<0)return 1;if(y<0)return -1;return (x-y)*sortDir||thCmp(sv(a,'tag'),sv(b,'tag'))}
  if(x==='')return 1;if(y==='')return -1;return thCmp(x,y)*sortDir||thCmp(sv(a,'tag'),sv(b,'tag'))}
 // ---------- edit mode ----------
 var editOn=EDIT&&lsGet(LS_MODE,true)!==false;
@@ -289,7 +292,7 @@ function tableEl(rows,update){var wrap=el('div','ra-table-wrap');var t=el('table
  cols.forEach(function(f){hr.appendChild(el('th',f.type==='number'?'num':'',f.label))});hr.appendChild(el('th','ra-col-actions','จัดการ'));th.appendChild(hr);t.appendChild(th);
  var tb=el('tbody');rows.forEach(function(r){var tr=el('tr',(sel[r.k]?'ra-row-selected':'')+(r._del?' is-del':''));tr.dataset.k=r.k;
   var c0=el('td','ra-col-check');c0.appendChild(checkbox(r,update));tr.appendChild(c0);
-  var c1=el('td','ra-col-photo');var tw=el('div','ra-thumb');tw.appendChild(photoEl(r.k,true));c1.appendChild(tw);tr.appendChild(c1);
+  var c1=el('td','ra-col-photo');var qw=el('div','ra-qp-thumb');var tw=el('div','ra-thumb');tw.appendChild(photoEl(r.k,true));qw.appendChild(tw);if(canEdit()){var qb=el('div','ra-qp-btns');qb.appendChild(btn('ra-btn small qp',PH[r.k]&&PH[r.k].length?'🖼 เปลี่ยนรูป':'🖼 ใส่รูป',function(){quickPhoto(r.k,update)}));qw.appendChild(qb)}c1.appendChild(qw);tr.appendChild(c1);
   cols.forEach(function(f){var td=el('td',f.type==='number'?'num':(f.key==='loc'||f.key==='date'?'ra-nowrap':''));td.dataset.l=f.label;
    if(f.key==='name'){var a=link('ra-linklike','', '#item='+encodeURIComponent(r.k));var nm=el('span','ra-name',r.name||'—');a.appendChild(nm);a.appendChild(el('span','ra-sub',r.type||''));td.appendChild(a);var bd=editBadges(r);if(bd)td.appendChild(bd)}
    else if(f.key==='status')td.appendChild(chip(stTone(r.status),r.status||'ไม่ระบุ'));
@@ -300,7 +303,7 @@ function tableEl(rows,update){var wrap=el('div','ra-table-wrap');var t=el('table
 function gridEl(rows,update){var g=el('div','ra-grid');var gf=fieldsFor('grid').filter(function(f){return ['photo','name','status'].indexOf(f.key)<0});
  rows.forEach(function(r){var a=el('article','ra-card'+(sel[r.k]?' selected':'')+(r._del?' is-del':'')+(r._edited?' is-edited':''));a.dataset.k=r.k;
   var ph=el('div','ra-card-photo');ph.appendChild(photoEl(r.k,false));var lc=el('label','ra-card-check');lc.title='เลือก';lc.appendChild(checkbox(r,update));ph.appendChild(lc);
-  var cc=chip(stTone(r.status)+' ra-card-cond',r.status||'ไม่ระบุ');ph.appendChild(cc);a.appendChild(ph);
+  var cc=chip(stTone(r.status)+' ra-card-cond',r.status||'ไม่ระบุ');ph.appendChild(cc);if(canEdit()){var ov=el('div','ra-qp-overlay');ov.appendChild(btn('ra-btn small ra-qp-add qp',PH[r.k]&&PH[r.k].length?'🖼 เปลี่ยนรูป':'🖼 ใส่รูป',function(){quickPhoto(r.k,update)}));ph.appendChild(ov)}a.appendChild(ph);
   var body=el('div','ra-card-body');if(r.type)body.appendChild(el('div','ra-card-cat',r.type));
   var nm=link('ra-card-name',r.name||'—','#item='+encodeURIComponent(r.k));nm.style.color='inherit';nm.title=r.name||'';body.appendChild(nm);
   var bd=editBadges(r);if(bd){var sl=el('div','ra-card-statusline');bd.style.marginLeft='0';sl.appendChild(bd);body.appendChild(sl)}
@@ -369,6 +372,7 @@ function renderForm(main,k){if(!canEdit()){location.hash='#/';return}
   var o2=PH[k]||[];if(!(o2.length===fPh.length&&o2.every(function(x,i){return x===fPh[i]})))setPhotos(k,fPh);save()}
  form.onsubmit=function(ev){ev.preventDefault();if(phBusy){toast('กำลังย่อรูป รอสักครู่…');return}var nmv=$('f_name').value.trim();if(nw&&!nmv){toast('กรุณากรอกชื่อครุภัณฑ์');$('f_name').focus();return}collect(null);location.hash=nw?'#item='+encodeURIComponent(k):'#/';toast(nw?'เพิ่มครุภัณฑ์ในเครื่องนี้แล้ว':'บันทึกการแก้ไขในเครื่องนี้แล้ว')};
  p.appendChild(form);main.appendChild(p)}
+function quickPhoto(k,update){var fi=$('qpfile');fi.value='';fi.onchange=function(){var f=fi.files&&fi.files[0];if(!f)return;toast('กำลังย่อรูป…');makePhoto(f).then(function(o){return setPhotos(k,[o].concat((PH[k]||[]).slice(1)))}).then(function(){toast('บันทึกรูปในเครื่องนี้แล้ว');update()},function(e){toast(e.message)})};fi.click()}
 function markDelete(k){var e=store.edits[k];if(e){e.del=!e.del;e.t=new Date().toISOString();if(!e.del&&!Object.keys(e.f||{}).length&&!e.serial&&!e.note&&!e.isNew)delete store.edits[k]}else store.edits[k]={f:{},serial:'',note:'',del:true,isNew:false,t:new Date().toISOString()};save();toast(store.edits[k]&&store.edits[k].del?'ทำเครื่องหมายลบแล้ว (ยังไม่ลบจริง)':'ยกเลิกเครื่องหมายลบแล้ว')}
 // ---------- STICKERS ----------
 function renderStickers(main,ids){if(ids&&ids.length){sel={};ids.forEach(function(k){if(k)sel[k]=1});saveSel();history.replaceState(null,'','#/stickers')}
@@ -447,7 +451,7 @@ ${EXTRA_CSS}</style></head><body>
 <header class="topbar no-print"><h1>📦 ${CONF.appTitle} <span class="ra-topsub">${CONF.appSubtitle}</span></h1>${nav}</header>
 <main class="main" id="main"></main>
 </div>
-${READONLY ? '' : '<input id="fimp" type="file" accept=".json,application/json" hidden>'}
+${READONLY ? '' : '<input id="fimp" type="file" accept=".json,application/json" hidden><input id="qpfile" type="file" accept="image/*" hidden>'}
 <div id="toast" class="ra-toast" hidden></div>
 <script id="cfg" type="application/json">${esc(JSON.stringify(cfg))}</script>
 <script id="data" type="application/json">${esc(JSON.stringify(rows))}</script>
