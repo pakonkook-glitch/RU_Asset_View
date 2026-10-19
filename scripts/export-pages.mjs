@@ -171,6 +171,24 @@ label.changed>input,label.changed>select{border-color:var(--teal)}
 textarea{min-height:4.2em;resize:vertical}
 #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#0f2a33;border:1px solid var(--teal);color:#ccfbf1;padding:.5rem .9rem;border-radius:10px;z-index:60;font-size:.85rem;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 #toast[hidden]{display:none}
+/* ===== photos ===== */
+.cx-ph{position:relative;margin:-.6rem -.6rem .35rem;aspect-ratio:4/3;overflow:hidden;border-radius:10px 10px 0 0;background:#08161c;cursor:zoom-in}
+.cx-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.cx-phn{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.65);color:#fff;font-size:.7rem;padding:.1rem .4rem;border-radius:6px}
+.phbox{margin-top:.75rem;border:1px dashed var(--border);border-radius:10px;padding:.6rem}
+.phhead{font-size:.85rem;color:var(--muted);margin-bottom:.4rem}
+.phlist{display:flex;flex-wrap:wrap;gap:.5rem}
+.phit{position:relative;width:88px;height:88px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#08161c}
+.phit img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.phdel{position:absolute;top:3px;right:3px;width:26px;height:26px;padding:0;border-radius:50%;background:rgba(127,29,29,.9);border-color:#991b1b;font-size:.8rem;line-height:1}
+.phbtns{display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0 .35rem}
+.phhint{font-size:.72rem;color:#7f93a5}
+.lb{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center}
+.lb[hidden]{display:none}
+.lb img{max-width:96vw;max-height:88vh;object-fit:contain;border-radius:6px}
+.lb button{position:absolute;background:rgba(15,42,51,.85);border:1px solid var(--teal);color:#fff;border-radius:999px;width:44px;height:44px;padding:0;font-size:1.3rem}
+.lb .lb-x{top:12px;right:12px}.lb .lb-p{left:10px;top:50%;transform:translateY(-50%)}.lb .lb-n{right:10px;top:50%;transform:translateY(-50%)}
+.lb .lb-c{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);color:#cbd5e1;font-size:.85rem}
 `;
 
 // ---------- client JS (no template interpolation inside) ----------
@@ -192,6 +210,38 @@ var store={v:1,edits:{}};
 function load(){if(!EDIT)return;try{var s=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(s&&s.v===1&&s.edits)store=s}catch(e){}}
 function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(store))}catch(e){toast('บันทึกไม่ได้: '+e.message)}}
 load();
+// ---- photos (IndexedDB, per item key; full + thumbnail JPEG data URLs) ----
+var MAXPH=6,PH_MAX=1280,PH_Q=0.8,TH_MAX=360,TH_Q=0.7,PH={},PHT={},phDB=null,phBusy=0;
+function idb(){return new Promise(function(res,rej){if(phDB)return res(phDB);if(!window.indexedDB)return rej(new Error('เบราว์เซอร์นี้ไม่รองรับ IndexedDB'));
+ var q;try{q=indexedDB.open('ruAssetView.photos',1)}catch(e){return rej(e)}
+ q.onupgradeneeded=function(){q.result.createObjectStore('photos',{keyPath:'k'})};q.onsuccess=function(){phDB=q.result;res(phDB)};q.onerror=function(){rej(q.error||new Error('เปิด IndexedDB ไม่ได้'))}})}
+function phPut(k){var list=PH[k]||[];return idb().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('photos','readwrite');var os=tx.objectStore('photos');
+ if(list.length)os.put({k:k,list:list,t:PHT[k]||''});else os.delete(k);tx.oncomplete=function(){res()};tx.onerror=tx.onabort=function(){rej(tx.error||new Error('IndexedDB error'))}})})
+ .catch(function(e){toast('บันทึกรูปไม่ได้: '+(e&&e.message||e))})}
+function phLoad(){return idb().then(function(db){return new Promise(function(res){var tx=db.transaction('photos','readonly');var q=tx.objectStore('photos').getAll();
+ q.onsuccess=function(){(q.result||[]).forEach(function(o){if(o&&o.k&&o.list&&o.list.length){PH[o.k]=o.list;PHT[o.k]=o.t||''}});res()};q.onerror=function(){res()}})}).catch(function(){})}
+function setPhotos(k,list){if(list&&list.length){PH[k]=list.slice(0,MAXPH);PHT[k]=new Date().toISOString()}else{delete PH[k];delete PHT[k]}return phPut(k)}
+function photoKeys(){return Object.keys(PH).filter(function(k){return PH[k]&&PH[k].length})}
+function photoOnlyKeys(){return photoKeys().filter(function(k){return !store.edits[k]})}
+function clearPhotos(){PH={};PHT={};idb().then(function(db){db.transaction('photos','readwrite').objectStore('photos').clear()}).catch(function(){})}
+function isImgUrl(s){return typeof s==='string'&&s.indexOf('data:image/')===0}
+function loadImg(src){return new Promise(function(res,rej){var im=new Image();im.onload=function(){res(im)};im.onerror=function(){rej(new Error('เปิดไฟล์รูปไม่ได้ (รองรับ JPG/PNG/WebP — HEIC บางเครื่องอาจไม่รองรับ)'))};im.src=src})}
+function draw(im,max,q){var w=im.naturalWidth||im.width,h=im.naturalHeight||im.height,s=Math.min(1,max/Math.max(w,h));var c=document.createElement('canvas');
+ c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));var g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);return c.toDataURL('image/jpeg',q)}
+function makePhoto(file){var u=URL.createObjectURL(file);return loadImg(u).then(function(im){var o={d:draw(im,PH_MAX,PH_Q),th:draw(im,TH_MAX,TH_Q)};URL.revokeObjectURL(u);return o},function(e){URL.revokeObjectURL(u);throw e})}
+function photoFromUrl(d){return loadImg(d).then(function(im){return {d:d,th:draw(im,TH_MAX,TH_Q)}},function(){return {d:d,th:''}})}
+function fullList(L){return (L||[]).map(function(p){return p.d})}
+// ---- lightbox ----
+var lb=null,lbList=[],lbI=0;
+function lbGo(d){lbI=(lbI+d+lbList.length)%lbList.length;lb.querySelector('img').src=lbList[lbI];lb.querySelector('.lb-c').textContent=lbList.length>1?(lbI+1)+' / '+lbList.length:'';lb.querySelector('.lb-p').hidden=lb.querySelector('.lb-n').hidden=lbList.length<2}
+function lbShow(list,i){if(!list||!list.length)return;if(!lb){lb=el('div','lb');lb.hidden=true;
+  lb.innerHTML='<img alt=""><button type="button" class="lb-x" aria-label="ปิด">✕</button><button type="button" class="lb-p" aria-label="ก่อนหน้า">‹</button><button type="button" class="lb-n" aria-label="ถัดไป">›</button><div class="lb-c"></div>';
+  document.body.appendChild(lb);
+  lb.onclick=function(ev){var c=ev.target.className;if(c==='lb-p')lbGo(-1);else if(c==='lb-n')lbGo(1);else lb.hidden=true};
+  window.addEventListener('keydown',function(ev){if(lb.hidden)return;if(ev.key==='Escape'){lb.hidden=true;ev.stopPropagation()}else if(ev.key==='ArrowLeft')lbGo(-1);else if(ev.key==='ArrowRight')lbGo(1)},true)}
+ lbList=list;lbI=i||0;lbGo(0);lb.hidden=false}
+function cardPhoto(t,r){var L=EDIT&&PH[r.k];if(!L||!L.length)return;var w=el('div','cx-ph');var im=document.createElement('img');im.src=L[0].th||L[0].d;im.alt='';im.loading='lazy';im.decoding='async';w.appendChild(im);
+ if(L.length>1)w.appendChild(el('span','cx-phn','📷 '+L.length));w.title='แตะเพื่อดูรูปใหญ่';w.onclick=function(){lbShow(fullList(L),0)};t.appendChild(w)}
 function emptyBase(){return {k:'',tag:'',tag2:'',b:'',name:'',type:'',date:'',fy:'',qty:'',loc:'',status:'ใช้งานได้',retired:0}}
 function eff(base,e){var r={};for(var x in base)r[x]=base[x];r.serial='';r.note='';
  if(e){var f=e.f||{};for(var y in f)r[y]=f[y];r.serial=e.serial||'';r.note=e.note||'';r._del=!!e.del;r._new=!!e.isNew;r._edited=true}
@@ -223,6 +273,7 @@ function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=c
 function tagEl(tag,cls,text){var e=el(tag,cls);String(text).split(/(?<=[.\-\/])|(?=\()/).forEach(function(part,i){if(i)e.appendChild(document.createElement('wbr'));e.appendChild(document.createTextNode(part))});return e}
 function badge(cls,text){return el('span','badge '+cls,text)}
 function card(r){var t=el('div','cx-tile'+(r._edited?' is-edited':'')+(r._del?' is-del':'')+(r._new?' is-new':''));t.dataset.k=r.k;
+ cardPhoto(t,r);
  var top=el('div','cx-top');var tw=el('div');tw.style.minWidth='0';tw.appendChild(tagEl('div','cx-tag',r.tag||'—'));if(r.tag2)tw.appendChild(el('div','cx-tag2','เลขอื่น: '+r.tag2));top.appendChild(tw);
  var bs=el('div','cx-badges');if(r._new)bs.appendChild(badge('new','ใหม่'));else if(r._edited)bs.appendChild(badge('edited','แก้แล้ว'));if(r._del)bs.appendChild(badge('del','รอลบ'));top.appendChild(bs);t.appendChild(top);
  t.appendChild(el('div','cx-name',r.name||'(ไม่มีชื่อรายการ)'));
@@ -239,6 +290,7 @@ function td(tr,label,cls,text){var c=el('td',cls,text);c.dataset.l=label;tr.appe
 function trow(r){var tr=el('tr',(r._edited?'is-edited':'')+(r._del?' is-del':''));
  var c=td(tr,'เลขครุภัณฑ์');c.appendChild(el('span','ttag',r.tag||'—'));if(r._new)c.appendChild(document.createTextNode(' '))&&c.appendChild(badge('new','ใหม่'));else if(r._edited){c.appendChild(document.createTextNode(' '));c.appendChild(badge('edited','แก้แล้ว'))}
  if(r._del){c.appendChild(document.createTextNode(' '));c.appendChild(badge('del','รอลบ'))}
+ if(EDIT&&PH[r.k]&&PH[r.k].length){var pb=badge('edited','📷 '+PH[r.k].length);pb.style.cursor='zoom-in';pb.onclick=function(){lbShow(fullList(PH[r.k]),0)};c.appendChild(document.createTextNode(' '));c.appendChild(pb)}
  td(tr,'เลข B','mono',r.b||'—');td(tr,'รายการ','',r.name);td(tr,'ประเภท','muted',r.type);td(tr,'วันที่ได้มา','mono',r.date||'—');td(tr,'ปีงบ','mono',r.fy||'—');td(tr,'จำนวน','mono',r.qty===''?'—':r.qty);td(tr,'ห้อง/สถานที่','mono',r.loc||'—');
  var sc=td(tr,'สถานะ');sc.appendChild(badge(stClass(r.status),r.status||'ไม่ระบุ'));
  if(EDIT){var ec=el('td','edit-only');var eb=el('button','cx-edit','แก้ไข');eb.onclick=function(){openEdit(r.k)};ec.appendChild(eb);tr.appendChild(ec)}
@@ -249,7 +301,7 @@ function render(){
  var q=$('q').value.trim().toLowerCase(),fs=$('fs').value,ft=$('ft').value,fy=$('fy').value,fe=EDIT?$('fe').value:'';
  var rows=all.filter(function(r){
   if(fs&&r.status!==fs)return false;if(ft&&r.type!==ft)return false;if(fy&&r.fy!==fy)return false;
-  if(fe==='edited'&&!r._edited)return false;if(fe==='del'&&!r._del)return false;if(fe==='new'&&!r._new)return false;
+  if(fe==='edited'&&!r._edited)return false;if(fe==='del'&&!r._del)return false;if(fe==='new'&&!r._new)return false;if(fe==='ph'&&!(PH[r.k]&&PH[r.k].length))return false;
   if(!q)return true;var hay=[r.tag,r.tag2,r.b,r.name,r.loc,r.type,r.serial,r.note].join(' ').toLowerCase();
   return hay.replace(/\s+/g,' ').indexOf(q)>=0||hay.replace(/\s+/g,'').indexOf(q.replace(/\s+/g,''))>=0});
  rows.sort(cmp);
@@ -260,7 +312,7 @@ function render(){
  $('empty').hidden=rows.length>0;
  var cnt=function(st){return rows.filter(function(r){return r.status===st}).length};
  var st=$('stats');st.innerHTML='';[['แสดง',rows.length+' / '+all.length],['ใช้งานได้',cnt('ใช้งานได้')],['ชำรุด',cnt('ชำรุด')],['จำหน่ายแล้ว',cnt('จำหน่ายแล้ว')],['เลิกใช้งาน',cnt('เลิกใช้งาน')]].forEach(function(x){if(x[0]==='เลิกใช้งาน'&&!x[1])return;var e=el('span','chip',x[0]+' ');e.appendChild(el('b',null,String(x[1])));st.appendChild(e)});
- if(EDIT){var n=editCount();$('ecount').textContent=n+' รายการที่แก้';$('ecount').className='chip'+(n?' has':'');['bexpj','bexpc','bclr'].forEach(function(id){$(id).disabled=!n})}
+ if(EDIT){var n=editCount(),pc=photoKeys().length,n2=n+photoOnlyKeys().length;$('ecount').textContent=n+' รายการที่แก้'+(pc?' · 📷 '+pc+' รายการมีรูป':'');$('ecount').className='chip'+(n2?' has':'');['bexpj','bexpc','bclr'].forEach(function(id){$(id).disabled=!n2})}
 }
 ['q','fs','ft','fy'].forEach(function(id){$(id).addEventListener('input',render)});
 // ---- toast ----
@@ -286,8 +338,9 @@ if(EDIT){
    if(!nw&&f!=='serial'&&f!=='note'&&String(inp.value)!==bv){lab.classList.add('changed');was.textContent='เดิม: '+(bv||'(ว่าง)')}else{lab.classList.remove('changed');was.textContent=''}});
   $('m_del').textContent=(e&&e.del)?'ยกเลิกเครื่องหมายลบ':'ทำเครื่องหมายลบ';
   $('m_revert').hidden=!e;$('m_revert').textContent=nw?'ลบรายการใหม่นี้':'คืนค่าเดิม';
+  mPhotosOpen(k);
   $('modal').hidden=false;$('modal').querySelector('.modal').scrollTop=0}
- function closeM(){$('modal').hidden=true;curK=null}
+ function closeM(){$('modal').hidden=true;curK=null;mPh=null}
  $('m_cancel').onclick=closeM;$('modal').addEventListener('click',function(ev){if(ev.target===this)closeM()});
  document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&!$('modal').hidden)closeM()});
  function collect(keepDel){var k=curK,b=baseOf(k),old=store.edits[k],nw=!baseByK[k];var e={f:{},serial:$('m_serial').value.trim(),note:$('m_note').value.trim(),del:old?!!old.del:false,isNew:nw,t:new Date().toISOString()};
@@ -295,39 +348,58 @@ if(EDIT){
   EDITABLE.forEach(function(f){var v=$('m_'+f).value.replace(/\s+/g,' ').trim();if(f==='loc'||f==='b'||f==='tag'||f==='tag2')v=v.replace(/\s+/g,'');if(f==='b')v=v.toUpperCase();
    if(nw){if(v)e.f[f]=v}else if(v!==String(b[f]==null?'':b[f]))e.f[f]=v});
   var changed=nw||Object.keys(e.f).length||e.serial||e.note||e.del;
-  if(changed)store.edits[k]=e;else delete store.edits[k];save()}
- $('mform').onsubmit=function(ev){ev.preventDefault();if(!baseByK[curK]&&!$('m_tag').value.trim()&&!$('m_name').value.trim()){toast('รายการใหม่ต้องมีเลขครุภัณฑ์หรือชื่อรายการ');return}collect(null);closeM();render();toast('บันทึกการแก้ไขในเครื่องนี้แล้ว')};
- $('m_del').onclick=function(){var old=store.edits[curK];collect(!(old&&old.del));closeM();render();toast(store.edits[curK]&&store.edits[curK].del?'ทำเครื่องหมายลบแล้ว (ยังไม่ลบจริง)':'ยกเลิกเครื่องหมายลบแล้ว')};
- $('m_revert').onclick=function(){if(!confirm('ยกเลิกการแก้ไขของรายการนี้ทั้งหมด?'))return;delete store.edits[curK];save();closeM();render();toast('คืนค่าเดิมแล้ว')};
+  if(changed)store.edits[k]=e;else delete store.edits[k];commitPhotos(k);save()}
+ $('mform').onsubmit=function(ev){ev.preventDefault();if(phBusy){toast('กำลังย่อรูป รอสักครู่…');return}if(!baseByK[curK]&&!$('m_tag').value.trim()&&!$('m_name').value.trim()){toast('รายการใหม่ต้องมีเลขครุภัณฑ์หรือชื่อรายการ');return}collect(null);closeM();render();toast('บันทึกการแก้ไขในเครื่องนี้แล้ว')};
+ $('m_del').onclick=function(){if(phBusy){toast('กำลังย่อรูป รอสักครู่…');return}var old=store.edits[curK];collect(!(old&&old.del));closeM();render();toast(store.edits[curK]&&store.edits[curK].del?'ทำเครื่องหมายลบแล้ว (ยังไม่ลบจริง)':'ยกเลิกเครื่องหมายลบแล้ว')};
+ $('m_revert').onclick=function(){if(!confirm('ยกเลิกการแก้ไขของรายการนี้ทั้งหมด?'))return;if(!baseByK[curK])setPhotos(curK,[]);delete store.edits[curK];save();closeM();render();toast('คืนค่าเดิมแล้ว')};
  $('badd').onclick=function(){var k='n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);openEdit(k,true)};
- $('bclr').onclick=function(){var n=editCount();if(!n)return;if(!confirm('ล้างการแก้ไขทั้งหมด '+n+' รายการในเครื่องนี้?\nแนะนำให้ส่งออกไฟล์เก็บไว้ก่อน — ล้างแล้วกู้คืนไม่ได้'))return;store={v:1,edits:{}};save();render();toast('ล้างการแก้ไขแล้ว')};
+ $('bclr').onclick=function(){var n=editCount(),np=photoKeys().length;if(!n&&!np)return;if(!confirm('ล้างการแก้ไขทั้งหมด '+n+' รายการ'+(np?' และรูปภาพของ '+np+' รายการ':'')+' ในเครื่องนี้?\nแนะนำให้ส่งออกไฟล์เก็บไว้ก่อน — ล้างแล้วกู้คืนไม่ได้'))return;store={v:1,edits:{}};save();clearPhotos();render();toast('ล้างการแก้ไขแล้ว')};
+ // ---- photos in edit form ----
+ var mPh=null;
+ function mPhotosOpen(k){mPh=(PH[k]||[]).slice();mPhRender()}
+ function mPhRender(){var box=$('m_ph');box.replaceChildren();(mPh||[]).forEach(function(p,i){var w=el('div','phit');var im=document.createElement('img');im.src=p.th||p.d;im.alt='';im.onclick=function(){lbShow(fullList(mPh),i)};
+   var x=el('button','phdel','✕');x.type='button';x.title='ลบรูปนี้';x.onclick=function(){mPh.splice(i,1);mPhRender()};w.appendChild(im);w.appendChild(x);box.appendChild(w)});
+  var n=(mPh||[]).length;$('m_phn').textContent=phBusy?'(กำลังย่อรูป…)':n?'('+n+'/'+MAXPH+')':'(ยังไม่มีรูป)';$('m_bcam').disabled=$('m_bpick').disabled=n>=MAXPH||!!phBusy}
+ function mAddFiles(fl){var files=Array.prototype.slice.call(fl||[]).filter(function(f){return !f.type||f.type.indexOf('image/')===0});if(!files.length||!mPh)return;var room=MAXPH-mPh.length;
+  if(files.length>room){toast('เพิ่มได้อีก '+room+' รูป (สูงสุด '+MAXPH+' รูป/รายการ)');files=files.slice(0,room)}if(!files.length)return;
+  var k0=curK,list=mPh;phBusy++;mPhRender();
+  files.reduce(function(p,f){return p.then(function(){return makePhoto(f).then(function(o){list.push(o)},function(e){toast(e.message)})})},Promise.resolve())
+   .then(function(){phBusy--;if(curK===k0&&mPh===list)mPhRender()})}
+ $('m_bcam').onclick=function(){$('m_cam').value='';$('m_cam').click()};
+ $('m_bpick').onclick=function(){$('m_pick').value='';$('m_pick').click()};
+ $('m_cam').onchange=function(){mAddFiles(this.files)};$('m_pick').onchange=function(){mAddFiles(this.files)};
+ function commitPhotos(k){if(!mPh)return;var old=PH[k]||[];if(old.length===mPh.length&&old.every(function(p,i){return p===mPh[i]}))return;setPhotos(k,mPh)}
  // ---- export ----
- function items(){return Object.keys(store.edits).sort().map(function(k){var e=store.edits[k],b=baseOf(k),nw=!!e.isNew||!baseByK[k];var ch={};
+ function allKeys(){var s={};Object.keys(store.edits).concat(photoKeys()).forEach(function(k){s[k]=1});return Object.keys(s)}
+ function items(withPh){return allKeys().sort().map(function(k){var e=store.edits[k]||{f:{},photoOnly:1},b=baseOf(k),nw=!!e.isNew||!baseByK[k];var ch={};
   EDITABLE.forEach(function(f){if(e.f&&(f in e.f))ch[f]={before:nw?'':String(b[f]==null?'':b[f]),after:e.f[f]}});
   if(e.serial)ch.serial={before:'',after:e.serial};
-  return {key:k,origB:nw?'':b.b,origTag:nw?'':b.tag,action:nw?'add':(e.del?'delete':'edit'),markedDelete:!!e.del,changes:ch,note:e.note||'',updatedAt:e.t||''}})}
+  return {key:k,origB:nw?'':b.b,origTag:nw?'':b.tag,action:nw?'add':(e.del?'delete':(e.photoOnly?'photo':'edit')),markedDelete:!!e.del,changes:ch,note:e.note||'',updatedAt:e.t||PHT[k]||'',photoCount:(PH[k]||[]).length,photos:withPh?fullList(PH[k]):undefined}})}
  function stamp(){var d=new Date(),p=function(n){return (n<10?'0':'')+n};return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())}
  function dl3(name,text,type){var blob=new Blob([text],{type:type});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500)}
- $('bexpj').onclick=function(){var doc={format:'ru-asset-edits',version:1,exportedAt:new Date().toISOString(),dataAsOf:CFG.asOf,builtAt:CFG.built,count:editCount(),items:items()};dl3('ru-asset-edits-'+stamp()+'.json',JSON.stringify(doc,null,2),'application/json');toast('ส่งออก JSON แล้ว')};
+ $('bexpj').onclick=function(){var its=items(true);var doc={format:'ru-asset-edits',version:1,exportedAt:new Date().toISOString(),dataAsOf:CFG.asOf,builtAt:CFG.built,count:its.length,photoItems:photoKeys().length,items:its};dl3('ru-asset-edits-'+stamp()+'.json',JSON.stringify(doc,null,2),'application/json');toast('ส่งออก JSON แล้ว'+(photoKeys().length?' (รวมรูป)':''))};
  function csvq(v){v=String(v==null?'':v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
- $('bexpc').onclick=function(){var L=[['key','origB','origTag','action','field','fieldLabel','before','after','note','updatedAt']];
-  items().forEach(function(it){var fs=Object.keys(it.changes);if(!fs.length)L.push([it.key,it.origB,it.origTag,it.action,'','','','',it.note,it.updatedAt]);
-   fs.forEach(function(f){L.push([it.key,it.origB,it.origTag,it.action,f,FLABEL[f]||f,it.changes[f].before,it.changes[f].after,it.note,it.updatedAt])})});
+ $('bexpc').onclick=function(){var L=[['key','origB','origTag','action','field','fieldLabel','before','after','note','updatedAt','photoCount']];
+  items().forEach(function(it){var fs=Object.keys(it.changes);if(!fs.length)L.push([it.key,it.origB,it.origTag,it.action,'','','','',it.note,it.updatedAt,it.photoCount]);
+   fs.forEach(function(f){L.push([it.key,it.origB,it.origTag,it.action,f,FLABEL[f]||f,it.changes[f].before,it.changes[f].after,it.note,it.updatedAt,it.photoCount])})});
   dl3('ru-asset-edits-'+stamp()+'.csv','\uFEFF'+L.map(function(r){return r.map(csvq).join(',')}).join('\r\n')+'\r\n','text/csv;charset=utf-8');toast('ส่งออก CSV แล้ว')};
  // ---- import ----
  $('bimp').onclick=function(){$('fimp').value='';$('fimp').click()};
  $('fimp').onchange=function(){var file=this.files&&this.files[0];if(!file)return;var rd=new FileReader();rd.onload=function(){try{var doc=JSON.parse(String(rd.result).replace(/^\uFEFF/,''));importDoc(doc)}catch(e){alert('อ่านไฟล์ไม่ได้: '+e.message)}};rd.readAsText(file,'utf-8')};
  function importDoc(doc){if(!doc||doc.format!=='ru-asset-edits'||!Array.isArray(doc.items))throw new Error('ไม่ใช่ไฟล์การแก้ไขของหน้านี้');
-  var add=0,upd=0,skip=0,unk=0;
+  var add=0,upd=0,skip=0,unk=0,nph=0,jobs=[];
   doc.items.forEach(function(it){var k=String(it.key||'');if(!k){skip++;return}var isNew=it.action==='add'||!baseByK[k];
    if(!isNew&&!baseByK[k]){unk++;return}if(it.action!=='add'&&!baseByK[k]){unk++;return}
+   if(Array.isArray(it.photos)){var pl=it.photos.filter(isImgUrl).slice(0,MAXPH);if(pl.length){nph++;jobs.push(Promise.all(pl.map(photoFromUrl)).then(function(L){return setPhotos(k,L)}))}}
+   if(it.action==='photo')return;
    var e={f:{},serial:'',note:String(it.note||''),del:!!it.markedDelete||it.action==='delete',isNew:isNew,t:String(it.updatedAt||doc.exportedAt||'')};
    var ch=it.changes||{};Object.keys(ch).forEach(function(f){var a=ch[f]&&ch[f].after;if(a==null)return;if(f==='serial')e.serial=String(a);else if(EDITABLE.indexOf(f)>=0)e.f[f]=String(a)});
    var old=store.edits[k];if(old&&old.t&&e.t&&old.t>e.t){skip++;return}
    if(old)upd++;else add++;store.edits[k]=e});
-  save();render();alert('นำเข้าแล้ว: ใหม่ '+add+' · ทับของเดิม '+upd+' · ข้าม (ในเครื่องใหม่กว่า) '+skip+(unk?' · ไม่พบ key '+unk:''))}
+  save();render();Promise.all(jobs).then(function(){render();alert('นำเข้าแล้ว: ใหม่ '+add+' · ทับของเดิม '+upd+' · ข้าม (ในเครื่องใหม่กว่า) '+skip+(unk?' · ไม่พบ key '+unk:'')+(nph?' · รูปภาพ '+nph+' รายการ':''))})}
 }
 setView(view);
+if(EDIT)phLoad().then(render);
 })();
 `;
 
@@ -337,7 +409,7 @@ const editUI = READONLY ? '' : `
    <span id="ecount" class="chip">0 รายการที่แก้</span>
    <span class="edit-only" style="gap:.5rem;flex-wrap:wrap;align-items:center">
     <button id="badd" class="primary" type="button">+ เพิ่มรายการ</button>
-    <select id="fe"><option value="">ทุกรายการ</option><option value="edited">เฉพาะที่แก้</option><option value="new">เฉพาะที่เพิ่มใหม่</option><option value="del">เฉพาะที่ทำเครื่องหมายลบ</option></select>
+    <select id="fe"><option value="">ทุกรายการ</option><option value="edited">เฉพาะที่แก้</option><option value="new">เฉพาะที่เพิ่มใหม่</option><option value="del">เฉพาะที่ทำเครื่องหมายลบ</option><option value="ph">เฉพาะที่มีรูป</option></select>
    </span>
    <span style="display:inline-flex;gap:.5rem;flex-wrap:wrap">
     <button id="bexpj" type="button">ส่งออกการแก้ไข (JSON)</button>
@@ -347,7 +419,7 @@ const editUI = READONLY ? '' : `
     <input id="fimp" type="file" accept=".json,application/json" hidden>
    </span>
   </div>
-  <div class="editnote">⚠ การแก้ไขบันทึกไว้ <b>เฉพาะในเครื่อง/เบราว์เซอร์นี้</b> เท่านั้น ยังไม่เข้าฐานข้อมูล — กด “ส่งออกการแก้ไข” เพื่อเก็บเป็นไฟล์ แล้ว “นำเข้าไฟล์การแก้ไข” ในอีกเครื่อง (มือถือ ↔ PC) ได้ · ถ้าล้างข้อมูลเบราว์เซอร์ การแก้ไขจะหาย</div>`;
+  <div class="editnote">⚠ การแก้ไขบันทึกไว้ <b>เฉพาะในเครื่อง/เบราว์เซอร์นี้</b> เท่านั้น ยังไม่เข้าฐานข้อมูล — กด “ส่งออกการแก้ไข” เพื่อเก็บเป็นไฟล์ แล้ว “นำเข้าไฟล์การแก้ไข” ในอีกเครื่อง (มือถือ ↔ PC) ได้ · <b>รูปภาพ</b>ก็เก็บเฉพาะในเบราว์เซอร์นี้เช่นกัน (ส่งออก JSON จะรวมรูปไปด้วย) · ถ้าล้างข้อมูลเบราว์เซอร์ การแก้ไขและรูปจะหาย</div>`;
 
 const modal = READONLY ? '' : `
 <div id="modal" class="modal-backdrop" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="m_title">
@@ -365,6 +437,7 @@ const modal = READONLY ? '' : `
    <label>Serial number (ไม่บังคับ)<input id="m_serial"><span class="was"></span></label>
    <label class="full">หมายเหตุการแก้<textarea id="m_note" placeholder="เช่น ตรวจนับแล้ว ย้ายห้อง ฯลฯ"></textarea><span class="was"></span></label>
   </div>
+  <div class="phbox"><div class="phhead">รูปภาพ <span id="m_phn"></span></div><div id="m_ph" class="phlist"></div><div class="phbtns"><button type="button" id="m_bcam" class="teal">📷 ถ่ายรูป</button><button type="button" id="m_bpick">🖼 เลือกรูปจากเครื่อง</button><input id="m_cam" type="file" accept="image/*" capture="environment" hidden><input id="m_pick" type="file" accept="image/*" multiple hidden></div><div class="phhint">สูงสุด 6 รูป/รายการ · ย่อขนาดอัตโนมัติ (ด้านยาวไม่เกิน 1280px) · แตะรูปเพื่อดูใหญ่ · กด ✕ เพื่อลบ · รูปบันทึกเมื่อกด “บันทึก”</div></div>
   <datalist id="dl_type"></datalist><datalist id="dl_loc"></datalist>
   <div class="acts">
    <div><button type="button" id="m_del" class="danger">ทำเครื่องหมายลบ</button><button type="button" id="m_revert">คืนค่าเดิม</button></div>
