@@ -1,12 +1,15 @@
 # publish-pages.ps1 — regenerate index.html from the DB (read-only) and push to GitHub Pages.
-# Usage (from the project folder):  powershell -ExecutionPolicy Bypass -File scripts\publish-pages.ps1
+# Usage (from the project folder):  powershell -ExecutionPolicy Bypass -File scripts\publish-pages.ps1 [-ReadOnly]
+#   default = editable version (edit mode, localStorage, export/import); -ReadOnly = locked read-only version
 # Requires: node (with node:sqlite), git, gh (logged in: gh auth status)
-param([string]$Repo = 'pakonkook-glitch/RU_Asset_View')
+param([string]$Repo = 'pakonkook-glitch/RU_Asset_View', [switch]$ReadOnly)
 $ErrorActionPreference = 'Stop'
 $project = Split-Path -Parent $PSScriptRoot
 $work = Join-Path $project 'pages-export'
 
-node --no-warnings (Join-Path $PSScriptRoot 'export-pages.mjs') --out (Join-Path $work 'index.html')
+$exportArgs = @((Join-Path $PSScriptRoot 'export-pages.mjs'), '--out', (Join-Path $work 'index.html'))
+if ($ReadOnly) { $exportArgs += '--readonly' }
+node --no-warnings @exportArgs
 if ($LASTEXITCODE -ne 0) { throw 'export failed' }
 
 # Privacy guard: refuse to publish if forbidden field names appear in the HTML
@@ -20,7 +23,7 @@ try {
   if (-not (Test-Path '.git')) {
     git init -b main | Out-Null
     $exists = $true; gh repo view $Repo *> $null; if ($LASTEXITCODE -ne 0) { $exists = $false }
-    if (-not $exists) { gh repo create $Repo --public --description 'RU asset register - read-only view' | Out-Null }
+    if (-not $exists) { gh repo create $Repo --public --description 'RU asset register view' | Out-Null }
     git remote add origin "https://github.com/$Repo.git"
   }
   git add index.html
