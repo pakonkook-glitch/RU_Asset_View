@@ -76,9 +76,11 @@ const sitePhotos = {};
 if (SP.config && existsSync(join(here, SP.config))) {
   const pj = JSON.parse(readFileSync(join(here, SP.config), 'utf8'));
   const keys = new Set(rows.map((r) => r.k));
+  const seenFiles = new Set();
   for (const p of pj.photos || []) {
     if (!/^[A-Za-z0-9._-]+\.jpg$/.test(p.file)) throw new Error('bad photo file name: ' + p.file);
     for (const f of [join(project, SP.dir, p.file), join(project, SP.thumbDir, p.file)]) if (!existsSync(f)) throw new Error('missing photo file: ' + f);
+    if (!Array.isArray(p.keys) || p.keys.length !== 1) throw new Error('RULE 1 photo = 1 asset: ' + p.file + ' is mapped to ' + (p.keys||[]).length + ' keys'); if (seenFiles.has(p.file)) throw new Error('RULE 1 photo = 1 asset: duplicate file ' + p.file); seenFiles.add(p.file);
     for (const k of p.keys) { if (!keys.has(k)) throw new Error('photo key not in DB: ' + k); if (sitePhotos[k]) throw new Error('two photos for ' + k); sitePhotos[k] = { f: p.file, kind: p.kind || 'tag' }; }
   }
 }
