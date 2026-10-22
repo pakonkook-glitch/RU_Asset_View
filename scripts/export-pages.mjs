@@ -87,7 +87,7 @@ if (SP.config && existsSync(join(here, SP.config))) {
     if (!/^[A-Za-z0-9._-]+\.jpg$/.test(p.file)) throw new Error('bad photo file name: ' + p.file);
     for (const f of [join(project, SP.dir, p.file), join(project, SP.thumbDir, p.file)]) if (!existsSync(f)) throw new Error('missing photo file: ' + f);
     const isReg = p.kind === 'register'; if (!Array.isArray(p.keys) || p.keys.length < 1 || (!isReg && p.keys.length !== 1)) throw new Error('RULE 1 photo = 1 asset: ' + p.file + ' is mapped to ' + (p.keys||[]).length + ' keys'); if (seenFiles.has(p.file)) throw new Error('RULE 1 photo = 1 asset: duplicate file ' + p.file); seenFiles.add(p.file);
-    for (const k of p.keys) { if (!keys.has(k)) throw new Error('photo key not in DB: ' + k); if (lqKeys.has(k)) throw new Error('RULE 3 LQ-590: photos of EPSON LQ-590 rows are set aside, not mapped; ' + k + ' has ' + p.file); if (twoKeys.has(k)) throw new Error('RULE 2 (1)/(2) pair: only the (1) row may have a photo; ' + k + ' ' + twoKeys.get(k) + ' has ' + p.file); if (sitePhotos[k]) throw new Error('two photos for ' + k); sitePhotos[k] = { f: p.file, kind: p.kind || 'tag' }; }
+    for (const k of p.keys) { if (!keys.has(k)) throw new Error('photo key not in DB: ' + k); if (lqKeys.has(k) && p.kind !== 'register') throw new Error('RULE 3 LQ-590: photos of EPSON LQ-590 rows are set aside, not mapped; ' + k + ' has ' + p.file); if (twoKeys.has(k)) throw new Error('RULE 2 (1)/(2) pair: only the (1) row may have a photo; ' + k + ' ' + twoKeys.get(k) + ' has ' + p.file); if (sitePhotos[k]) throw new Error('two photos for ' + k); sitePhotos[k] = { f: p.file, kind: p.kind || 'tag' }; }
   }
 }
 console.log('site photos:', Object.keys(sitePhotos).length, 'items');
