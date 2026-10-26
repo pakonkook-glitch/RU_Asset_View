@@ -1,4 +1,4 @@
-# publish-pages.ps1 - build index.html (RU Asset Database online view) and push it to GitHub Pages.
+﻿# publish-pages.ps1 - build index.html (RU Asset Database online view) and push it to GitHub Pages.
 # Usage (from the repo/project folder):
 #   powershell -ExecutionPolicy Bypass -File scripts\publish-pages.ps1                 # editable version, rebuild from DB
 #   powershell -ExecutionPolicy Bypass -File scripts\publish-pages.ps1 -ReadOnly       # locked read-only version
@@ -27,10 +27,19 @@ if (-not $NoExport) {
 # Privacy guard (export-pages.mjs checks too): refuse to publish if forbidden words / field names appear
 $html = [IO.File]::ReadAllText($out, [Text.Encoding]::UTF8)
 $thai = @(([string][char]0x0E19 + [char]0x0E32 + [char]0x0E22), ([string][char]0x0E19 + [char]0x0E32 + [char]0x0E07), ([string][char]0x0E1A + [char]0x0E32 + [char]0x0E17))
-foreach ($bad in @('user_name','user_note','unit_price','total_value','net_value','depreciation','remarks','extra_notes','image_url','"price"') + $thai) {
+foreach ($bad in @('user_name','user_note','unit_price','total_value','net_value','depreciation','remarks','extra_notes','image_url','assignee','"price"') + $thai) {
   if ($html.Contains($bad)) { throw "Privacy check failed: found a forbidden string in index.html" }
 }
 Write-Host 'Privacy check OK'
+# assign.html (staff assignment page): real names allowed by owner decision; prices/money still forbidden
+$assign = Join-Path $work 'assign.html'
+if (Test-Path $assign) {
+  $ah = [IO.File]::ReadAllText($assign, [Text.Encoding]::UTF8)
+  $baht = [string][char]0x0E1A + [char]0x0E32 + [char]0x0E17; $raka = [string][char]0x0E23 + [char]0x0E32 + [char]0x0E04 + [char]0x0E32
+  foreach ($bad in @('unit_price','total_value','net_value','depreciation','"price"','user_note','remarks',$baht,$raka)) {
+    if ($ah.Contains($bad)) { throw "Privacy check failed: found a forbidden string in assign.html" }
+  }
+}
 $isRO = $html.Contains('(' + [char]0x0E2D + [char]0x0E48 + [char]0x0E32 + [char]0x0E19)  # title contains "(read" in Thai -> read-only build
 Write-Host ("Version: " + $(if ($isRO) { 'READ-ONLY' } else { 'EDITABLE' }))
 
@@ -44,7 +53,7 @@ try {
   }
   if (-not (Test-Path '.gitignore')) { Set-Content -Path '.gitignore' -Value @('*.bak*', 'pages-export/') -Encoding ASCII }
   $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-  git add index.html .gitignore 2>&1 | Out-Null
+  git add index.html .gitignore 2>&1 | Out-Null; if (Test-Path $assign) { git add assign.html 2>&1 | Out-Null }
   if ($repoMode) { git add scripts 2>&1 | Out-Null; if (Test-Path images) { git add images 2>&1 | Out-Null } }
   $ErrorActionPreference = $prev
   git diff --cached --quiet

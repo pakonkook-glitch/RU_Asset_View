@@ -21,6 +21,8 @@ const arg = (name, def) => { const i = argv.indexOf(name); return i >= 0 && argv
 const dbPath = resolve(arg('--db', join(project, 'server', 'data', 'finance_assets.db')));
 const outPath = resolve(arg('--out', join(project, 'pages-export', 'index.html')));
 const READONLY = argv.includes('--readonly');
+// --unassigned <json>: list of keys whose hidden assignee field is empty (flag only; no names ever enter this page)
+const UA = arg('--unassigned', '') ? new Set(JSON.parse(readFileSync(resolve(arg('--unassigned', '')), 'utf8'))) : null;
 const CONF = JSON.parse(readFileSync(join(here, 'asset-fields.json'), 'utf8'));
 if (arg('--site-url')) CONF.siteUrl = arg('--site-url');
 const vendor = (f) => readFileSync(join(here, 'vendor', f), 'utf8');
@@ -63,6 +65,7 @@ const rows = raw.map((r) => {
   }
   o.fy = budgetYear(o.date);
   o.status = status(r);
+  if (UA) o.ua = UA.has(o.k) ? 1 : 0;
   for (const k of Object.keys(o)) if (o[k] === '' && k !== 'k') delete o[k]; // compact
   return o;
 });
@@ -212,7 +215,7 @@ function saveSel(){lsSet(LS_SEL,selKeys())}
 function toggleSel(k,on){if(on==null)on=!sel[k];if(on)sel[k]=1;else delete sel[k];saveSel()}
 // ---------- filters ----------
 var F={q:'',status:'',type:'',fy:'',year:'',unit:'',ed:''};
-var DIMS=[['status','สภาพ / สถานะ',function(r){return r.status||''}],['type','ประเภท',function(r){return r.type||''}],['fy','ปีงบประมาณ (พ.ศ.)',function(r){return r.fy||''}],['year','ปีที่ได้มา (พ.ศ.)',function(r){return yearOf(r.date)}],['unit',CFG.unit.label,function(r){return r._unit}]];
+var DIMS=[['status','สภาพ / สถานะ',function(r){return r.status||''}],['type','ประเภท',function(r){return r.type||''}],['fy','ปีงบประมาณ (พ.ศ.)',function(r){return r.fy||''}],['year','ปีที่ได้มา (พ.ศ.)',function(r){return yearOf(r.date)}],['unit',CFG.unit.label,function(r){return r._unit}]].concat(${UA ? 'true' : 'false'}?[['asg','ผู้รับผิดชอบ',function(r){return r.ua===1?'ยังไม่มีผู้รับผิดชอบ':(r.ua===0?'มีผู้รับผิดชอบแล้ว':'')}]]:[]);
 function searchHay(r){return fieldsFor('search').map(function(f){return sv(r,f.key)}).concat([r._unit,r.fy]).join(' ').toLowerCase()}
 function match(r,f,skip){for(var i=0;i<DIMS.length;i++){var d=DIMS[i];if(d[0]===skip)continue;if(f[d[0]]&&d[2](r)!==f[d[0]])return false}
  if(f.ed==='edited'&&!r._edited)return false;if(f.ed==='new'&&!r._new)return false;if(f.ed==='del'&&!r._del)return false;if(f.ed==='ph'&&!r._ph)return false;
@@ -459,7 +462,7 @@ phLoad().then(function(){if(photoKeys().length)rerender()});
 })();
 `;
 
-const nav = `<nav><a href="#/" data-p="list">รายการครุภัณฑ์</a>${READONLY ? '' : '<a href="#/new" data-p="form" id="navnew">+ เพิ่มครุภัณฑ์</a>'}<a href="#/stickers" data-p="stickers">พิมพ์สติกเกอร์</a></nav>`;
+const nav = `<nav><a href="#/" data-p="list">รายการครุภัณฑ์</a>${READONLY ? '' : '<a href="#/new" data-p="form" id="navnew">+ เพิ่มครุภัณฑ์</a>'}<a href="#/stickers" data-p="stickers">พิมพ์สติกเกอร์</a><a href="assign.html" data-p="assign">🚪 จัดให้พนักงาน</a></nav>`;
 const title = CONF.appTitle + (READONLY ? ' (อ่านอย่างเดียว)' : ' (แก้ไขได้)');
 const html = `<!doctype html>
 <html lang="th"><head>
