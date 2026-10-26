@@ -49,8 +49,9 @@ select,input{width:100%;padding:12px;border-radius:14px;border:2px solid var(--p
 <button class="back" id="chg" onclick="changePerson()" style="display:none;margin-top:8px">← กลับไปเลือกรายชื่อ</button><div class="hub" id="hub"><div class="me" id="me"><div class="ava">🧸</div><div id="cname">เลือกชื่อก่อนนะ</div></div></div>
 <button class="btn otherbtn" id="ob" onclick="openDoor(OTHER)">📦 อื่น ๆ (ตู้ ฯลฯ)</button>
 <div class="card"><b>🎒 ของที่อยู่กับคนนี้</b> <span class="chip" id="cnt">0</span><div id="mine"></div></div>
+<div class="card"><b>📋 สรุป ใครถือกี่ชิ้น</b> <span class="chip" id="sumn">0</span><div id="sum"></div></div>
 <div class="card" style="display:flex;gap:8px;flex-wrap:wrap">
-<button class="btn gh" onclick="exp()">⬇️ ส่งออก CSV</button><button class="btn gh" onclick="expj()">💾 สำรอง JSON</button>
+<a class="btn gh stk" id="stkall" target="_blank" rel="noopener">🏷️ พิมพ์สติกเกอร์</a><button class="btn gh" onclick="exp()">⬇️ ส่งออก CSV</button><button class="btn gh" onclick="expj()">💾 สำรอง JSON</button>
 <label class="btn gh">⬆️ นำเข้า JSON<input type="file" accept=".json" style="display:none" onchange="imp(this)"></label></div>
 <div class="note">📌 เว็บนี้เขียนลงฐานข้อมูลเองไม่ได้ · ที่เลือกไว้จะเก็บในเบราว์เซอร์นี้ก่อน — กด “ส่งออก CSV” แล้วส่งไฟล์ให้ทีมนำเข้าโปรแกรม จากนั้นหน้าเว็บจะแสดงผู้ใช้ตามฐานข้อมูล · ข้อมูล ณ 26 ต.ค. 2569</div></div>
 <div class="room" id="room" onclick="if(event.target===this)closeDoor()"><div class="sheet">
@@ -87,7 +88,7 @@ function draw(){document.getElementById('chg').style.display=cur?'inline-block':
   d.onclick=()=>openDoor(c);hub.appendChild(d)});
  const nfo=DATA.items.filter(i=>i.c==='other'&&free(i)).length,nmo=cur?DATA.items.filter(i=>i.c==='other'&&holder(i)===cur).length:0;
  document.getElementById('ob').textContent=`📦 อื่น ๆ (ตู้ ฯลฯ) · ว่าง ${nfo}`+(nmo?` · มี ${nmo}`:'');
- const my=DATA.items.filter(i=>cur&&holder(i)===cur);document.getElementById('cnt').textContent=my.length;
+ const my=DATA.items.filter(i=>cur&&holder(i)===cur);document.getElementById('cnt').textContent=my.length;drawSum();
  document.getElementById('mine').innerHTML=my.length?my.map(i=>row(i,A[i.k]?`<button class="btn rm" onclick="un('${i.k}',this)">↩️ คืน</button>`:'<span class="chip">เดิมใน DB</span>',A[i.k]&&A[i.k].mon?`<span class="chip">${A[i.k].mon} จอ</span>`:'')).join(''):'<div class="note">ยังไม่มีของเลย เปิดประตูเลือกได้เลย 🚪</div>'}
 function row(i,act,extra=''){const ph=i.ph?`<img loading="lazy" src="images/th/${i.ph}" onclick="event.stopPropagation();lbOpen('${i.k}')" onerror="this.outerHTML='<div class=ph>📷</div>'">`:'<div class="ph">📷</div>';
  return `<div class="row" data-k="${i.k}">${ph}<div class="t">${i.n} ${extra}<small>${i.no}${i.loc?' · '+i.loc:''}</small></div>${act}</div>`}
@@ -126,8 +127,12 @@ function give(keys,ev,mon){if(!cur||!keys.length)return;const at=new Date().toIS
 function sparkle(x,y){const cs=['#f78fb3','#b8a6ff','#8fd3ff','#9be3b5','#ffd56b'];for(let n=0;n<12;n++){const s=document.createElement('div');s.className='spark';s.style.left=x+'px';s.style.top=y+'px';s.style.background=cs[n%5];const a=n/12*6.28,r=40+Math.random()*30;s.style.setProperty('--dx',Math.cos(a)*r+'px');s.style.setProperty('--dy',Math.sin(a)*r+'px');document.body.appendChild(s);setTimeout(()=>s.remove(),750)}}
 function un(k,b){if(!confirm('คืนรายการนี้กลับเข้าห้อง?'))return;const r=b.closest('.row');r.style.transform='translateX(60px)';r.style.opacity='0';setTimeout(()=>{delete A[k];sv();draw()},300)}
 function dl(n,t,ty){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:ty}));a.download=n;a.click()}
+function stkUrl(ks){return 'index.html#/stickers?ids='+ks.join(',')}
+function drawSum(){const g={};DATA.items.forEach(i=>{const h=holder(i);if(h)(g[h]=g[h]||[]).push(i.k)});const all=Object.values(g).flat(),ps=Object.keys(g).sort((a,b)=>g[b].length-g[a].length);
+ document.getElementById('sumn').textContent=all.length+' ชิ้น · '+ps.length+' คน';const sa=document.getElementById('stkall');sa.href=all.length?stkUrl(all):'#';sa.style.opacity=all.length?1:.5;sa.onclick=all.length?null:e=>{e.preventDefault();alert('ยังไม่มีของที่จัดสรร')};
+ document.getElementById('sum').innerHTML=ps.length?ps.map(p=>`<div class="srow" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed #eee"><span style="flex:1">${esc(lab(p))} <span class="chip">${g[p].length}</span></span><a class="btn gh stk" target="_blank" rel="noopener" href="${stkUrl(g[p])}">🏷️ พิมพ์สติกเกอร์</a></div>`).join(''):'<div class="note">ยังไม่มีการจัดสรร</div>'}
 function exp(){const m=Object.fromEntries(DATA.items.map(i=>[i.k,i]));dl('ru_assignments.csv','\ufeffkey,asset_no,asset_name,category,monitors,assignee,assigned_at\n'+Object.entries(A).map(([k,v])=>[k,m[k]?.no,m[k]?.n,m[k]?.c,v.mon||'',v.who,v.at].map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\n'),'text/csv')}
 function expj(){dl('ru_assignments.json',JSON.stringify(A,null,1),'application/json')}
 function imp(el){const f=el.files[0];if(f)f.text().then(t=>{A=JSON.parse(t);sv();draw();alert('นำเข้าแล้ว ✨')})}
 fill();draw();
-</script><div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 13:20 (mobile-fix) · ข้อมูลจัดสรรเก็บในเครื่อง/เบราว์เซอร์นี้เท่านั้น</div></body></html>
+</script><div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 13:25 (stickers) · ข้อมูลจัดสรรเก็บในเครื่อง/เบราว์เซอร์นี้เท่านั้น</div></body></html>
