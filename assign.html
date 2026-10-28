@@ -127,11 +127,12 @@ function iname(k){const i=IM[k];return i?(i.n+' '+(i.no||'')):k}
 function merge(items){let ch=0;const seen=new Set();(items||[]).forEach(r=>{const k=r.key;if(String(k).startsWith('__')){if(k==='__notify')ntfSeen(r);return}seen.add(k);
   const la=A[k]?(A[k].at||T0):(DELA[k]||'');
   if(r.assigned_at&&r.assigned_at>la){if(r.assignee){if(A[k]&&A[k].who&&A[k].who!==r.assignee)CF.unshift({k,w:r.assignee,l:A[k].who});if(SEL.has(k)){SEL.delete(k);CF.unshift({k,w:r.assignee,l:cur})}A[k]={who:r.assignee,at:r.assigned_at};delete DELA[k]}else{delete A[k];DELA[k]=r.assigned_at}ch=1}
-  else if(la&&la>(r.assigned_at||''))Q['a|'+k]=1;
+  // Do not upload stale local assignments unless the user explicitly queued a change.
   const ln=NE[k]?(NE[k].at||T0):(DELN[k]||'');
   if(r.numedit_at&&r.numedit_at>ln){if(r.new_asset_no){NE[k]={key:k,old:r.old_asset_no,new:r.new_asset_no,at:r.numedit_at}}else{delete NE[k];DELN[k]=r.numedit_at}ch=1}
-  else if(ln&&ln>(r.numedit_at||''))Q['n|'+k]=1});
- Object.keys(A).forEach(k=>{if(!seen.has(k))Q['a|'+k]=1});Object.keys(NE).forEach(k=>{if(!seen.has(k))Q['n|'+k]=1});
+  // Likewise, do not recreate old number-edit proposals from browser cache.
+ });
+ // Remote absence is not proof that browser cache is newer. Only explicit local edits enter Q.
  lsSet(QK,JSON.stringify(Q));if(ch){sv();nesv();draw();if(door)list()}drawCF()}
 async function sync(){if(!on()){SYNC.st='off';badge();return}if(busy)return;busy=true;SYNC.st='busy';badge();
  try{let j=await api({action:'getAll'});merge(j.items);
@@ -150,7 +151,7 @@ function drawCF(){const e=document.getElementById('cf');if(!e)return;CF=CF.slice
  e.innerHTML=CF.length?'<b>⚠️ มีผู้จัดแล้ว (ชนกับเครื่องอื่น)</b><button class="btn gh" style="float:right" onclick="CF=[];drawCF()">รับทราบ</button>'+CF.map(c=>`<div>• ${esc(iname(c.k))} → อยู่กับ <b>${esc(lab(c.w))}</b> (ที่เลือกให้ ${esc(lab(c.l))} ไม่ได้)</div>`).join(''):''}
 function cfgOpen(){const a=prompt('วาง Web App URL (ลงท้าย /exec)\n(เว้นว่าง = ปิดออนไลน์)',CFG.api||'');if(a===null)return;if(!a.trim()){CFG={};lsSet(CFK,'{}');badge();return}
  if(!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(a.trim())&&!confirm('URL นี้ไม่ใช่ script.google.com — ใช้ต่อไหม?'))return;
- const t=prompt('วางรหัส TOKEN',CFG.token||'');if(!t)return;CFG={api:a.trim(),token:t.trim()};lsSet(CFK,JSON.stringify(CFG));Object.keys(A).forEach(qA);Object.keys(NE).forEach(qN);kick()}
+ const t=prompt('วางรหัส TOKEN',CFG.token||'');if(!t)return;CFG={api:a.trim(),token:t.trim()};lsSet(CFK,JSON.stringify(CFG));kick()}
 function cfgLink(){if(!on()){alert('ตั้งค่าออนไลน์ก่อน');return}const u=location.origin+location.pathname+'?api='+encodeURIComponent(CFG.api)+'&token='+encodeURIComponent(CFG.token);
  (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('คัดลอกลิงก์ให้น้องแล้ว ✓ (อย่าโพสต์ที่สาธารณะ)'),()=>prompt('คัดลอกลิงก์นี้ส่งให้น้อง',u))}
 function commitPending(){if(door&&cur&&SEL.size){const at=new Date().toISOString(),k=[...SEL];SEL=new Set();k.forEach(x=>{A[x]={who:cur,at};delete DELA[x];qA(x)});sv();if(on())sync()}}
