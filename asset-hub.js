@@ -6,11 +6,11 @@ let cfg={...DEFAULT},session=null,assets=[],busy=false;
 try{cfg={...DEFAULT,...JSON.parse(localStorage.getItem(CFGKEY)||'{}')};session=JSON.parse(localStorage.getItem(SESSKEY)||'null')}catch(e){}
 const hook=window.RUAssetPage;
 const bar=document.createElement('section');bar.id='ru-supabase-bar';bar.style.cssText='max-width:1100px;margin:12px auto;padding:12px;border:2px solid #9d86d6;border-radius:12px;background:#f8f4ff;color:#31264b;font:14px system-ui';
-bar.innerHTML='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="flex:1">RU Asset View · Supabase</b><span id="ru-sb-status">ยังไม่ได้เชื่อมฐานข้อมูล</span><button id="ru-sb-connect">เชื่อมต่อ / เข้าสู่ระบบ</button><button id="ru-sb-refresh">โหลดฐานข้อมูลกลาง</button><button id="ru-sb-create">เพิ่มครุภัณฑ์</button><button id="ru-sb-delete">ลบรายการ</button><button id="ru-sb-photo">อัปโหลดรูป</button><a href="edit.html">แก้ไขข้อมูล</a></div><div id="ru-sb-panel" style="display:none;margin-top:12px"><label>Supabase project URL <input id="ru-sb-url" style="width:85%" placeholder="https://your-project.supabase.co"></label><label>Publishable / anon key <input id="ru-sb-key" style="width:85%" type="password"></label><label>อีเมล <input id="ru-sb-email" type="email"></label><label>รหัสผ่าน <input id="ru-sb-pass" type="password"></label><button id="ru-sb-login">เข้าสู่ระบบ</button><button id="ru-sb-signup">สร้างบัญชีครั้งแรก</button><button id="ru-sb-logout">ออกจากระบบ</button><p>ห้ามกรอก service_role หรือ secret key ในเว็บเด็ดขาด</p></div>';
+bar.innerHTML='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="flex:1">RU Asset View · Supabase</b><span id="ru-sb-status">ยังไม่ได้เชื่อมฐานข้อมูล</span><button id="ru-sb-connect">เชื่อมต่อ / เข้าสู่ระบบ</button><button id="ru-sb-refresh">โหลดฐานข้อมูลกลาง</button><button id="ru-sb-create">เพิ่มครุภัณฑ์</button><button id="ru-sb-delete">ลบรายการ</button><button id="ru-sb-photo">อัปโหลดรูป</button><a href="edit.html">แก้ไขข้อมูล</a></div><div id="ru-sb-panel" style="display:none;margin-top:12px"><label>Supabase project URL <input id="ru-sb-url" style="width:85%" placeholder="https://your-project.supabase.co"></label><label>Publishable / anon key <input id="ru-sb-key" style="width:85%" type="password"></label><label>อีเมล <input id="ru-sb-email" type="email"></label><label>รหัสผ่าน <input id="ru-sb-pass" type="password"></label><button id="ru-sb-login">เข้าสู่ระบบบัญชีเดิม</button><button id="ru-sb-logout">ออกจากระบบ</button><p>มีบัญชีแล้ว ให้กดเข้าสู่ระบบบัญชีเดิม ไม่ต้องสมัครซ้ำ · ห้ามใส่ service_role หรือ secret key</p></div>';
 const anchor=document.querySelector('.wrap')||document.querySelector('main')||document.body.firstElementChild;
 if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(bar,anchor);else document.body.prepend(bar);
 const el=id=>bar.querySelector('#'+id),status=(msg,bad=false)=>{el('ru-sb-status').textContent=msg;el('ru-sb-status').style.color=bad?'#a21d32':'#27633a'};
-for(const [id,text] of [['ru-sb-connect','ตั้งค่า'],['ru-sb-refresh','รีเฟรช'],['ru-sb-create','เพิ่ม'],['ru-sb-delete','ลบ'],['ru-sb-photo','รูป'],['ru-sb-login','ลงชื่อเข้าใช้'],['ru-sb-signup','สร้างบัญชี']])el(id).style.cssText='padding:7px;border-radius:7px;border:1px solid #9885c9;background:#f0eaff;cursor:pointer';
+for(const [id,text] of [['ru-sb-connect','ตั้งค่า'],['ru-sb-refresh','รีเฟรช'],['ru-sb-create','เพิ่ม'],['ru-sb-delete','ลบ'],['ru-sb-photo','รูป'],['ru-sb-login','ลงชื่อเข้าใช้']])el(id).style.cssText='padding:7px;border-radius:7px;border:1px solid #9885c9;background:#f0eaff;cursor:pointer';
 function url(){const u=String(cfg.url||'').replace(/\/+$/,'');if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(u))throw Error('Supabase URL ไม่ถูกต้อง');return u}
 function key(){const k=String(cfg.anonKey||'');if(!k||k.startsWith('sb_secret_')||k.includes('service_role'))throw Error('ต้องใช้ publishable หรือ anon key เท่านั้น');return k}
 async function raw(route,{method='GET',body,headers={},authenticated=true}={}){
@@ -38,14 +38,6 @@ async function login(){
  if(!r.access_token)throw Error('เข้าสู่ระบบไม่สำเร็จ');
  session=r;localStorage.setItem(CFGKEY,JSON.stringify(cfg));localStorage.setItem(SESSKEY,JSON.stringify(session));el('ru-sb-pass').value='';
  el('ru-sb-panel').style.display='none';await refresh();
-}
-async function signup(){
- const email=el('ru-sb-email').value.trim();
- const password=el('ru-sb-pass').value;
- if(!email||password.length<12)throw Error('ระบุอีเมลและรหัสผ่านอย่างน้อย 12 ตัวอักษร');
- const data=await raw('/auth/v1/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password}),authenticated:false});
- if(!data.user)throw Error('สร้างบัญชีไม่สำเร็จ');
- el('ru-sb-pass').value='';status('ส่งอีเมลยืนยันบัญชีแล้ว กรุณายืนยันอีเมล');
 }
 async function table(path,opts={}){
  return raw('/rest/v1/ru_assets'+path,{...opts,headers:{'Content-Type':'application/json',Prefer:'return=representation',...(opts.headers||{})}});
@@ -163,9 +155,9 @@ async function uploadFromBar(){
  await refresh();status('✅ อัปโหลดและยืนยันรูป '+k)}catch(e){status('❌ '+e.message,true)}};i.click();
 }
 function run(fn){return async()=>{try{await fn()}catch(e){status('❌ '+e.message,true)}}}
-el('ru-sb-connect').onclick=()=>{el('ru-sb-panel').style.display=el('ru-sb-panel').style.display==='none'?'block':'none';el('ru-sb-url').value=cfg.url||'';el('ru-sb-key').value=cfg.anonKey||''};
+el('ru-sb-connect').onclick=()=>{const panel=el('ru-sb-panel');panel.style.display=panel.style.display==='none'?'block':'none';el('ru-sb-url').value=cfg.url||'';el('ru-sb-key').value=cfg.anonKey||'';if(panel.style.display==='block'){status('เข้าสู่ระบบด้วยบัญชีเดิม');el('ru-sb-email').focus()}};
 el('ru-sb-login').onclick=run(login);
-el('ru-sb-signup').onclick=run(signup);
+
 
 
 el('ru-sb-logout').onclick=()=>{session=null;localStorage.removeItem(SESSKEY);status('ออกจากระบบแล้ว')};
