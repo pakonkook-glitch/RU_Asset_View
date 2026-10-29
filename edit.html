@@ -3390,7 +3390,7 @@ function renderForm(main,k){if(!canEdit()){location.hash='#/';return}
  if(!nw){
   var central=el('div','panel');central.appendChild(el('h3',null,'📷 รูปครุภัณฑ์ในฐานข้อมูลกลาง'));
   central.appendChild(el('p','ra-hint','เพิ่ม เปลี่ยน หรือลบรูปผ่านระบบออนไลน์เดียวกัน เพื่อให้ทุกหน้าและทุกเครื่องเห็นรูปตรงกัน'));
-  central.appendChild(link('ra-btn primary','📷 จัดการรูปภาพบน Google Drive','assign.html?photo='+encodeURIComponent(k)));
+  central.appendChild(link('ra-btn primary','📷 จัดการรูปภาพบน Supabase Storage','assign.html?photo='+encodeURIComponent(k)));
   p.appendChild(central);
  }else{
  var pr=el('div','ra-photo-row');var dz=el('div','dropzone ra-dropzone');dz.appendChild(el('p',null,'📷 ลากวาง'+labelOf('photo')+'ที่นี่ หรือเลือกไฟล์ / ถ่ายรูป'));

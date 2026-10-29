@@ -213,7 +213,7 @@ async function peSave(){if(!PE||!PE.act)return;const k=PE.k,i=IM[k];const at=new
  if(PE.act==='set'){const ok=await pPut(k,PE.blob);if(!ok){toast('⚠️ เก็บรูปลงเครื่องไม่ได้ กรุณาลองใหม่');return}}else pDel(k);
  PP[k]={key:k,act:PE.act,at,th:PE.th,sz:PE.blob?PE.blob.size:0,w:PE.w,h:PE.h,no:i.no||'',name:i.n||'',st:'local',dev:(cur||'')+'@'+DEV};PQ2[k]={op:'put',at};
  const ok=ppsv();peClose();PSY.st=on()&&navigator.onLine!==false?'busy':'pending';PSY.err='';ppDraw();neRedraw();
- toast(ok?(on()&&navigator.onLine!==false?'⏳ กำลังส่งรูปภาพไปยัง Google Drive และ Google Sheets…':'🟡 บันทึกสำรองในเครื่องแล้ว (รอเชื่อมต่ออินเทอร์เน็ตเพื่อส่งขึ้น Drive)'):'⚠️ เก็บคิวรูปได้ชั่วคราวเท่านั้น',!ok);psKick()}
+ toast(ok?(on()&&navigator.onLine!==false?'⏳ กำลังส่งรูปภาพไปยัง Supabase Storage และ Supabase Database…':'🟡 บันทึกสำรองในเครื่องแล้ว (รอเชื่อมต่ออินเทอร์เน็ตเพื่อส่งขึ้น Drive)'):'⚠️ เก็บคิวรูปได้ชั่วคราวเท่านั้น',!ok);psKick()}
 function peCancel(k){if(!PP[k])return;if(!confirm('ยกเลิกข้อเสนอรูปนี้?'))return;const p=PP[k];delete PP[k];pDel(k);
  if(p.st==='sent'||on())PQ2[k]={op:'cancel',at:new Date().toISOString()};else delete PQ2[k];ppsv();ppDraw();neRedraw();toast('ยกเลิกข้อเสนอรูปแล้ว');psKick()}
 async function peView(k){const b=await pGet(k);const p=PP[k]||RP[k];const im=document.getElementById('lbi');im.onerror=null;im.src=b?URL.createObjectURL(b):(p&&p.th||'');const i=IM[k]||{};document.getElementById('lbc').textContent='ข้อเสนอรูป · '+(i.n||k)+' · '+(i.no||'');LB.s=1;LB.x=0;LB.y=0;lbApply();document.getElementById('lb').classList.add('on')}
@@ -223,9 +223,9 @@ function ppDraw(){const ks=[...new Set([...Object.keys(PP),...Object.keys(RP)])]
  const connected=on()&&navigator.onLine!==false;
  if(PSY.err){st.textContent='❌ อัปโหลดไม่สำเร็จ: '+PSY.err+' (รูปยังสำรองอยู่ในเครื่อง)';st.style.color='#a11'}
  else if(pending&&!connected){st.textContent='🟡 บันทึกสำรองในเครื่องแล้ว (รอเชื่อมต่ออินเทอร์เน็ตเพื่อส่งขึ้น Drive)';st.style.color='#986000'}
- else if(pending&&PSY.st==='busy'){st.textContent='⏳ กำลังส่งรูปภาพไปยัง Google Drive และอัปเดต Google Sheets…';st.style.color='#295a96'}
+ else if(pending&&PSY.st==='busy'){st.textContent='⏳ กำลังส่งรูปภาพไปยัง Supabase Storage และอัปเดต Supabase Database…';st.style.color='#295a96'}
  else if(pending){st.textContent='⏳ รอส่งรูปขึ้นฐานกลาง '+pending+' รายการ';st.style.color='#986000'}
- else if(PSY.st==='ok'){st.textContent='✅ บันทึกรูปภาพลงฐานข้อมูลกลางสำเร็จ (Google ยืนยันแล้ว)';st.style.color='#176c35'}
+ else if(PSY.st==='ok'){st.textContent='✅ บันทึกรูปภาพลงฐานข้อมูลกลางสำเร็จ (Supabase ยืนยันแล้ว)';st.style.color='#176c35'}
  else{st.textContent='';st.style.color=''}
  document.getElementById('pplist').innerHTML=ks.length?ks.map(k=>{const p=PP[k]||RP[k];return row(IM[k],(PP[k]?`<button class="btn gh" onclick="peView('${k}')">🔍 ดู</button>`+(p.act==='set'?`<button class="btn gh" onclick="peDl('${k}')">⬇️</button>`:''):''))}).join(''):'<div class="note">ยังไม่มีข้อเสนอรูป · กด “📷 แก้รูป” ที่รายการใดก็ได้</div>'}
 let psBusy=false,psT=null;
@@ -490,7 +490,7 @@ addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElement
 <div class="pecol"><div>รูปปัจจุบัน<div class="pebox" id="pecur"></div></div><div>รูปที่จะเสนอ<div class="pebox" id="penew">➕</div></div></div>
 <div class="pebtns"><label class="btn add">📸 ถ่ายรูป<input type="file" accept="image/*" capture="environment" hidden onchange="peFile(this)"></label><label class="btn gh">🖼️ เลือกไฟล์<input type="file" accept="image/*" hidden onchange="peFile(this)"></label><button class="btn rm" id="pedel" onclick="peDel()">🗑️ ลบรูป</button></div>
 <div class="note" id="pest"></div>
-<div class="note">ℹ️ กดบันทึกแล้วระบบจะส่งรูปขึ้น Google Drive และอัปเดตฐานกลางโดยตรง หากเชื่อมต่อไม่ได้ รูปจะค้างในเครื่องและส่งซ้ำเมื่อกลับมาออนไลน์ · 1 รูปต่อครุภัณฑ์ · หลีกเลี่ยงภาพติดชื่อคนหรือเอกสาร</div>
+<div class="note">ℹ️ กดบันทึกแล้วระบบจะส่งรูปขึ้น Supabase Storage และอัปเดตฐานกลางโดยตรง หากเชื่อมต่อไม่ได้ รูปจะค้างในเครื่องและส่งซ้ำเมื่อกลับมาออนไลน์ · 1 รูปต่อครุภัณฑ์ · หลีกเลี่ยงภาพติดชื่อคนหรือเอกสาร</div>
 <div class="pebar" style="display:flex;gap:8px;margin-top:10px"><button class="btn gh" style="flex:1" onclick="peClose()">ยกเลิก</button><button class="btn add" id="pesave" style="flex:2" disabled onclick="peSave()">✅ บันทึกรูป</button></div>
 <div id="peold"></div></div></div>
 <div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="asset-hub.js"></script></body></html>

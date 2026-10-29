@@ -104,7 +104,8 @@ async function createAsset(){
  const name=prompt('ชื่อครุภัณฑ์ใหม่');if(!name)return;
  const number=prompt('เลขครุภัณฑ์','');if(number===null)return;
  const location=prompt('สถานที่','');if(location===null)return;
- const keys=assets.map(a=>Number(a.key.slice(1))).filter(Number.isFinite);
+ const allKeys=await table('?select=key&limit=10000');
+ const keys=allKeys.map(a=>Number(a.key.slice(1))).filter(Number.isSafeInteger);
  const next='r'+(Math.max(0,...keys)+1);
  const row={key:next,asset_name:name,asset_no:number,location};
  const r=await table('?select=*',{method:'POST',body:JSON.stringify(row)});
@@ -155,7 +156,10 @@ async function uploadFromBar(){
  const i=document.createElement('input');i.type='file';i.accept='image/jpeg';
  i.onchange=async()=>{try{const f=i.files[0];if(!f)return;const bytes=new Uint8Array(await f.arrayBuffer());
  const b64=btoa(Array.from(bytes,x=>String.fromCharCode(x)).join(''));
- await putPhoto(k,b64,'data:image/jpeg;base64,'+b64);
+ const bitmap=await createImageBitmap(f);const scale=Math.min(1,240/Math.max(bitmap.width,bitmap.height));
+ const c=document.createElement('canvas');c.width=Math.max(1,Math.round(bitmap.width*scale));c.height=Math.max(1,Math.round(bitmap.height*scale));
+ c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);bitmap.close();
+ await putPhoto(k,b64,c.toDataURL('image/jpeg',0.65));
  await refresh();status('✅ อัปโหลดและยืนยันรูป '+k)}catch(e){status('❌ '+e.message,true)}};i.click();
 }
 function run(fn){return async()=>{try{await fn()}catch(e){status('❌ '+e.message,true)}}}
