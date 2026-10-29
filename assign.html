@@ -340,18 +340,24 @@ async function batchApplyNumbers(){
  BATCH_RUNNING=true;const btn=document.getElementById('applyne');if(btn){btn.disabled=true;btn.textContent='⏳ กำลังตรวจข้อมูล…'}
  const done=[],skipped=[],failed=[];
  try{
-  const response=await api({action:'getAssets'});
-  const db=new Map((response.assets||[]).map(x=>[x.key,x]));
+  let response=null;
+  try{response=await api({action:'getAssets'})}
+  catch(e){
+   if(!/unknown action/i.test(String(e.message||e)))throw e;
+   // Older deployments may support updateAssetNo but not getAssets.
+   // Backend updateAssetNo always verifies expectedOld against master DB.
+  }
+  const db=response?new Map((response.assets||[]).map(x=>[x.key,x])):null;
   for(const k of ks){
    const p=NE[k],a=db.get(k);
    if(!p)continue;
    if(k==='r108'){skipped.push(k+' (ยกเลิกข้อเสนอเดิมตามคำสั่ง)');continue}
    if(!a){skipped.push(k+' (ไม่พบ key ใน DB)');continue}
-   const old=String(a.asset_no||'').trim(),want=String(p.new||'').trim(),expected=String(p.old||'').trim();
+   const old=String((a?a.asset_no:p.old)||'').trim(),want=String(p.new||'').trim(),expected=String(p.old||'').trim();
    if(!want){skipped.push(k+' (เลขใหม่ว่าง)');continue}
    if(old===want){done.push(k+' (มีเลขนี้ใน DB แล้ว)');continue}
    if(old!==expected){skipped.push(k+' (เลขเดิมใน DB ไม่ตรงกับข้อเสนอ)');continue}
-   const dup=(response.assets||[]).filter(x=>x.key!==k&&String(x.asset_no||'').trim()===want);
+   const dup=(response?response.assets:DATA.items.map(x=>({key:x.k,asset_no:x.no}))).filter(x=>x.key!==k&&String(x.asset_no||'').trim()===want);
    if(dup.length){skipped.push(k+' (เลขใหม่ซ้ำกับ '+dup.map(x=>x.key).join(', ')+')');continue}
    try{
     const j=await api({action:'updateAssetNo',key:k,expectedOld:old,newAssetNo:want});
