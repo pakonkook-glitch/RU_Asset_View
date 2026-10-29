@@ -349,10 +349,10 @@ async function batchApplyNumbers(){
   }
   const db=response?new Map((response.assets||[]).map(x=>[x.key,x])):null;
   for(const k of ks){
-   const p=NE[k],a=db.get(k);
+   const p=NE[k],a=db?db.get(k):null;
    if(!p)continue;
    if(k==='r108'){skipped.push(k+' (ยกเลิกข้อเสนอเดิมตามคำสั่ง)');continue}
-   if(!a){skipped.push(k+' (ไม่พบ key ใน DB)');continue}
+   if(db&&!a){skipped.push(k+' (ไม่พบ key ใน DB)');continue}
    const old=String((a?a.asset_no:p.old)||'').trim(),want=String(p.new||'').trim(),expected=String(p.old||'').trim();
    if(!want){skipped.push(k+' (เลขใหม่ว่าง)');continue}
    if(old===want){done.push(k+' (มีเลขนี้ใน DB แล้ว)');continue}
@@ -376,7 +376,7 @@ async function batchApplyNumbers(){
   // r108 was explicitly rejected by the owner: discard without altering the master.
   if(NE.r108){delete NE.r108;DELN.r108=now;qN('r108')}
   nesv();neRedraw();kick();
-  alert('อัปเดตฐานข้อมูลเสร็จสิ้น\n✅ สำเร็จ/มีอยู่แล้ว '+done.length+' รายการ\n⚠️ ข้าม '+skipped.length+' รายการ\n❌ ผิดพลาด '+failed.length+' รายการ\n\n'+[...done,...skipped,...failed].join('\n'));
+  alert((done.length?'ตรวจสอบการอัปเดตแล้ว':'ยังไม่มีรายการใดบันทึกสำเร็จ')+'\n✅ สำเร็จ/มีอยู่แล้ว '+done.length+' รายการ\n⚠️ ข้าม '+skipped.length+' รายการ\n❌ ผิดพลาด '+failed.length+' รายการ\n\n'+[...done,...skipped,...failed].join('\n'));
  }catch(e){alert('ยังไม่บันทึกข้อเสนอ: '+(e.message||e)+'\nข้อเสนอทั้งหมดที่ยังไม่สำเร็จยังค้างอยู่')}
  finally{BATCH_RUNNING=false;drawNeSum()}
 }
