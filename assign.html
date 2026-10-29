@@ -56,7 +56,7 @@ mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 <header><h1>🚪✨ ประตูครุภัณฑ์</h1><div class="ntfw"><button class="btn add ntf" id="ntfb" onclick="openAssetEditor()">✏️ แก้ไขข้อมูลครุภัณฑ์</button> <small id="ntft"></small></div><small>เปิดประตู เลือกของใส่ให้แต่ละคน · <a href="./">← กลับหน้ารายการครุภัณฑ์</a></small></header>
 <div class="wrap">
 <div id="sbad" style="display:none;background:#d62828;color:#fff;padding:10px 12px;border-radius:12px;margin:8px 0;font-weight:bold">⛔ เบราว์เซอร์นี้บันทึกไม่ได้ — <i></i><br><small style="font-weight:normal">ตอนนี้เก็บไว้ชั่วคราวในหน้านี้เท่านั้น ถ้าปิด/รีโหลดจะหาย · กด “ดาวน์โหลดสำรอง (JSON)” หรือเปิดด้วย Chrome/Edge ปกติ (ไม่ใช่โหมดไม่ระบุตัวตน)</small></div>
-<div id="sync" style="padding:8px 10px;border-radius:12px;margin:6px 0;font-size:.85rem;background:#eee"><span>☁️</span> <button class="btn gh" onclick="cfgOpen()">⚙️ ตั้งค่าออนไลน์</button> <button class="btn gh" onclick="cfgLink()">🔗 ลิงก์ให้น้อง</button> <button class="btn gh" onclick="batchApplyNumbers()">🔄 อัปเดตลง DB</button></div>
+<div id="sync" style="padding:8px 10px;border-radius:12px;margin:6px 0;font-size:.85rem;background:#eee"><span>☁️</span> <button class="btn gh" onclick="window.RUCSVHub&&window.RUCSVHub.openImport()">📂 นำเข้า CSV กลาง</button> <button class="btn gh" onclick="batchApplyNumbers()">✅ อนุมัติเลขใน CSV</button></div>
 <div id="cf" class="card" style="display:none;background:#fff3c4"></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0;font-size:.85rem"><span id="sst">💾</span><button class="btn gh" onclick="expj()">💾 ดาวน์โหลดสำรอง (JSON)</button><button class="btn gh" onclick="restoreLast()">↩️ กู้คืนข้อมูลล่าสุด</button></div>
 <label>👤 เลือกชื่อพนักงาน</label><select id="who"></select>
@@ -70,7 +70,7 @@ mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 <div class="card" style="display:flex;gap:8px;flex-wrap:wrap">
 <a class="btn gh stk" id="stkall" target="_blank" rel="noopener">🏷️ พิมพ์สติกเกอร์</a><button class="btn gh" onclick="exp()">⬇️ ส่งออก CSV</button><button class="btn gh" onclick="expj()">💾 สำรอง JSON</button>
 <label class="btn gh">⬆️ นำเข้า JSON/CSV<input type="file" accept=".json,.csv" style="display:none" onchange="imp(this)"></label></div>
-<div class="note">📌 เว็บนี้เขียนลงฐานข้อมูลเองไม่ได้ · ที่เลือกไว้เก็บในเบราว์เซอร์นี้ (และออนไลน์ถ้าตั้งค่า ☁️) — กด “ส่งออก CSV” แล้วส่งไฟล์ให้ทีมนำเข้าโปรแกรม จากนั้นหน้าเว็บจะแสดงผู้ใช้ตามฐานข้อมูล · ข้อมูล ณ 26 ต.ค. 2569</div></div>
+<div class="note">📌 โหมด CSV: ชื่อและเลขครุภัณฑ์อ่านจาก CSV กลางชุดเดียวกับหน้าทะเบียนและหน้าพิมพ์ QR · งานจัดสรรเก็บไว้ในเบราว์เซอร์และสำรองเป็น JSON/CSV ได้ · กดอนุมัติเลขเพื่อสร้าง CSV ใหม่ · ไม่มีการส่งข้อมูลเข้า Apps Script อัตโนมัติ · CSV เริ่มต้นอ้างอิงข้อมูลหน้าเว็บ ณ 26 ต.ค. 2569</div></div>
 <div class="room" id="room" onclick="if(event.target===this)closeDoor()"><div class="sheet">
 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><button class="back" onclick="closeDoor()">← ย้อนกลับ</button><b id="rt" style="flex:1"></b><button class="btn gh" onclick="closeDoor()">🚪 ปิดประตู</button></div>
 <div class="note" id="rh"></div><div class="tabs" id="tabs"></div>
@@ -115,7 +115,7 @@ async function restoreLast(){const L=pj(SNK,[]).filter(x=>x&&x.A);const ib=await
 let CFG=pj(CFK,{});{const u=new URL(location.href),a=u.searchParams.get('api'),t=u.searchParams.get('token');if(a&&t){CFG={api:a,token:t};lsSet(CFK,JSON.stringify(CFG))}if(u.searchParams.has('api')||u.searchParams.has('token')){u.searchParams.delete('api');u.searchParams.delete('token');history.replaceState(history.state,'',u.pathname+u.search+u.hash)}}
 let DEV=lsGet('ru_dev_id');if(!DEV){DEV=Math.random().toString(36).slice(2,8);lsSet('ru_dev_id',DEV)}
 let Q=pj(QK,{}),SYNC={st:'off',t:null,err:''},CF=[],busy=false;
-const on=()=>!!(CFG.api&&CFG.token);
+const on=()=>false; // CSV-only: prevent all legacy online writes
 function qA(k){Q['a|'+k]=1;lsSet(QK,JSON.stringify(Q))}
 function qN(k){Q['n|'+k]=1;lsSet(QK,JSON.stringify(Q))}
 const T0='2000-01-01T00:00:00.000Z';
@@ -141,7 +141,7 @@ async function sync(){if(!on()){SYNC.st='off';badge();return}if(busy)return;busy
   SYNC.st=Object.keys(Q).length?'wait':'ok';SYNC.t=new Date();SYNC.err=''}catch(e){SYNC.st='err';SYNC.err=String(e.message||e)}finally{busy=false;badge()}}
 let syT=null;function kick(){clearTimeout(syT);badge();/* manual approval only */}
 function badge(){const b=document.getElementById('sync');if(!b)return;const n=Object.keys(Q).length;let t,c;
- if(!on()){t='☁️ ออนไลน์: ยังไม่ได้ตั้งค่า (ใช้ในเครื่องนี้อย่างเดียว)';c='#eee'}
+ if(!on()){t='📄 โหมด CSV · เก็บข้อมูลในเครื่อง · ไม่มีการส่ง Apps Script';c='#eee'}
  else if(SYNC.st==='err'){t='❌ ซิงก์ไม่สำเร็จ'+(n?` · รอส่ง ${n} รายการ`:'')+' — '+SYNC.err;c='#ffd6d6'}
  else if(n||SYNC.st==='busy'&&n){t=`⏳ รอส่ง ${n} รายการ`;c='#fff3c4'}
  else if(SYNC.st==='busy'){t='🔄 กำลังซิงก์…';c='#e3f0ff'}
@@ -330,9 +330,10 @@ function sparkle(x,y){const cs=['#f78fb3','#b8a6ff','#8fd3ff','#9be3b5','#ffd56b
 function un(k,b){if(!confirm('คืนรายการนี้กลับเข้าห้อง?'))return;const r=b.closest('.row');r.style.transform='translateX(60px)';r.style.opacity='0';setTimeout(()=>{delete A[k];DELA[k]=new Date().toISOString();qA(k);sv();kick();draw()},300)}
 function dl(n,t,ty){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:ty}));a.download=n;a.click()}
 function stkUrl(ks){return 'index.html#/stickers?ids='+ks.join(',')}
-function drawNeSum(){ppDraw();const ks=Object.keys(NE);document.getElementById('nesum').innerHTML=ks.length?`<div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>✏️ ข้อเสนอแก้เลข (รอแก้ใน DB)</b> <span class="chip" id="nen">${ks.length}</span><button id="applyne" class="btn add" onclick="batchApplyNumbers()">✅ อัปเดตข้อเสนอทั้งหมดลง DB</button></div>`+ks.map(k=>IM[k]?row(IM[k],''):'').join(''):''}
+function drawNeSum(){ppDraw();const ks=Object.keys(NE);document.getElementById('nesum').innerHTML=ks.length?`<div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>✏️ ข้อเสนอแก้เลข (รออนุมัติลง CSV)</b> <span class="chip" id="nen">${ks.length}</span><button id="applyne" class="btn add" onclick="batchApplyNumbers()">✅ อนุมัติเลขใน CSV</button></div>`+ks.map(k=>IM[k]?row(IM[k],''):'').join(''):''}
 let BATCH_RUNNING=false;
 async function batchApplyNumbers(){
+ return window.RUCSVHub ? window.RUCSVHub.approveNumbers() : alert("CSV ยังไม่พร้อม");
  if(BATCH_RUNNING)return;
  if(!on()){alert('ยังไม่ได้ตั้งค่าการเชื่อมต่อ RU Asset DB');return}
  // Number corrections, assignments and photos are proposals until this button is pressed.
@@ -436,12 +437,19 @@ window.RUAssetPage={apply:function(assets){
   i.db_thumb=/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||'')?a.ru_photo_thumb:'';
   if(!Q['a|'+k]){
    if(a.assignee)A[k]={who:a.assignee,at:a.updated_at||'2000-01-01T00:00:00.000Z'};
-   else if(A[k]&&A[k].who)qA(k); // old local assignment waits for owner's manual migration
+   else if(A[k]&&A[k].who){} // preserve local assignments; CSV has no private names
   }
  });
  // Do not delete proposals, assignments, or source image files on refresh.
  QH.clear();DATA.items.sort(ysort);draw();if(door)list();
 }};
+window.RUAssetPage.pendingNumbers=function(){
+ return Object.keys(NE).map(k=>({key:k,asset_no:NE[k]&&NE[k].new,old:NE[k]&&NE[k].old})).filter(p=>p.asset_no);
+};
+window.RUAssetPage.commitNumbers=function(keys){
+ keys.forEach(k=>{delete NE[k];delete Q['n|'+k];delete DELN[k];});
+ lsSet(QK,JSON.stringify(Q));nesv();neRedraw();
+};
 fill();draw();if(!LSOK)showBad();stat();badge();drawCF();if(!LSOK)idbGet().then(b=>{if(b&&b.A&&!Object.keys(A).length&&Object.keys(b.A).length){A=normA(b.A);NE=b.NE||{};draw();toast('ดึงข้อมูลจากสำรอง IndexedDB แล้ว')}});// no auto-sync on page load
 addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElementById('lb').classList.contains('on')){lbHide();return}if(door)closeDoor()});
 </script><div class="room" id="pe" onclick="if(event.target===this)peClose()"><div class="pesh">
@@ -453,4 +461,4 @@ addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElement
 <div class="note">ℹ️ เป็น “ข้อเสนอ” — ยังไม่เปลี่ยนรูปจริงใน DB/เว็บ จนกว่าพี่ไก่จะนำไปใช้ · 1 รูปต่อ 1 ครุภัณฑ์ · หลีกเลี่ยงการถ่ายติดชื่อคน/เอกสาร (จะเบลอก่อนใช้จริง)</div>
 <div class="pebar" style="display:flex;gap:8px;margin-top:10px"><button class="btn gh" style="flex:1" onclick="peClose()">ยกเลิก</button><button class="btn add" id="pesave" style="flex:2" disabled onclick="peSave()">✅ บันทึกข้อเสนอ</button></div>
 <div id="peold"></div></div></div>
-<div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="asset-hub.js"></script></body></html>
+<div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="csv-hub.js"></script><!-- RU_CSV_ONLY_20261029 --></body></html>
