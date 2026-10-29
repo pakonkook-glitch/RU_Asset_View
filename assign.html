@@ -340,7 +340,7 @@ function list(){const q=document.getElementById('q').value.trim(),T=qtoks(q);doc
 function tg(k,b){SEL.has(k)?SEL.delete(k):SEL.add(k);const r=b.closest('.row');r.classList.toggle('sel',SEL.has(k));b.className='btn '+(SEL.has(k)?'add':'gh');b.textContent=SEL.has(k)?'💖 เลือกแล้ว':'＋ เลือก';document.getElementById('sc').textContent=SEL.size}
 function toast(t,bad){let e=document.getElementById('toast');if(!e){e=document.createElement('div');e.id='toast';document.body.appendChild(e)}e.textContent=t;e.className='show'+(bad?' bad':'');clearTimeout(e._t);e._t=setTimeout(()=>e.className='',2600)}
 const LB={s:1,x:0,y:0};function lbApply(){document.getElementById('lbi').style.transform=`translate(calc(-50% + ${LB.x}px),calc(-50% + ${LB.y}px)) scale(${LB.s})`}
-function lbOpen(k){const i=DATA.items.find(x=>x.k===k);if(!i||i.db_removed||!(i.db_thumb||i.ph))return;const im=document.getElementById('lbi');im.onerror=()=>{im.onerror=null;im.src=i.db_thumb||('images/th/'+i.ph)};im.src=i.db_thumb||('images/'+i.ph);document.getElementById('lbc').textContent=i.n+' · '+i.no;LB.s=1;LB.x=0;LB.y=0;lbApply();document.getElementById('lb').classList.add('on');history.pushState({lb:1},'')}
+function lbOpen(k){const i=DATA.items.find(x=>x.k===k);if(!i||i.db_removed||!(i.db_url||i.db_thumb||i.ph))return;const im=document.getElementById('lbi');im.onerror=()=>{im.onerror=null;im.src=i.db_thumb||('images/th/'+i.ph)};im.src=i.db_url||i.db_thumb||('images/'+i.ph);document.getElementById('lbc').textContent=i.n+' · '+i.no;LB.s=1;LB.x=0;LB.y=0;lbApply();document.getElementById('lb').classList.add('on');history.pushState({lb:1},'')}
 function lbHide(){document.getElementById('lb').classList.remove('on')}function lbClose(){if(history.state&&history.state.lb)history.back();else lbHide()}
 function lbZ(f){LB.s=Math.min(6,Math.max(1,LB.s*f));if(LB.s===1){LB.x=0;LB.y=0}lbApply()}
 (function(){let pts=new Map(),d0=0,s0=1,last=0,mv=false;const v=()=>document.getElementById('lbv');addEventListener('DOMContentLoaded',()=>{});
@@ -465,7 +465,7 @@ window.RUAssetPage={apply:function(assets){
   if(a.fiscal_year)i.y=Number(a.fiscal_year)||a.fiscal_year;
   i.db_removed=a.ru_photo_removed==='1';
   i.db_thumb=/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||'')?a.ru_photo_thumb:'';
-  i.db_url=/^https:\/\/lh3\.googleusercontent\.com\/d\/[A-Za-z0-9_-]+$/.test(a.ru_photo_url||'')?a.ru_photo_url:'';
+  i.db_url=String(a.ru_photo_url||'').startsWith('https://rxulhozzrmylcejnrdcm.supabase.co/storage/v1/object/sign/ru-asset-photos/')?a.ru_photo_url:'';
   if(!Q['a|'+k]){
    if(a.assignee)A[k]={who:a.assignee,at:a.updated_at||'2000-01-01T00:00:00.000Z'};
    else {delete A[k];delete DELA[k]} // central DB is authoritative; pending explicit edits in Q are preserved

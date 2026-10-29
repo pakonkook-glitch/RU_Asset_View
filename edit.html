@@ -3510,7 +3510,9 @@ window.RUAssetPage={apply:function(assets){
   if(a.ru_photo_removed==='1')DBPH[k]={removed:true};
   else if(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||'')){
    DBPH[k]={thumb:a.ru_photo_thumb,
-    url:/^https:\/\/lh3\.googleusercontent\.com\/d\/[A-Za-z0-9_-]+$/.test(a.ru_photo_url||'')?a.ru_photo_url:''};
+    url:String(a.ru_photo_url||'').startsWith('https://rxulhozzrmylcejnrdcm.supabase.co/storage/v1/object/sign/ru-asset-photos/')?a.ru_photo_url:''};
+  }else if(String(a.ru_photo_url||'').startsWith('https://rxulhozzrmylcejnrdcm.supabase.co/storage/v1/object/sign/ru-asset-photos/')){
+   DBPH[k]={thumb:a.ru_photo_url,url:a.ru_photo_url};
   }else delete DBPH[k];
   next.push(r);newByK[k]=r;
  });

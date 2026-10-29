@@ -10,7 +10,7 @@ bar.innerHTML='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wra
 const anchor=document.querySelector('.wrap')||document.querySelector('main')||document.body.firstElementChild;
 if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(bar,anchor);else document.body.prepend(bar);
 const el=id=>bar.querySelector('#'+id),status=(msg,bad=false)=>{el('ru-sb-status').textContent=msg;el('ru-sb-status').style.color=bad?'#a21d32':'#27633a'};
-for(const [id,text] of [['ru-sb-connect','ตั้งค่า'],['ru-sb-refresh','รีเฟรช'],['ru-sb-create','เพิ่ม'],['ru-sb-delete','ลบ'],['ru-sb-photo','รูป'],['ru-sb-login','ลงชื่อเข้าใช้']])el(id).style.cssText='padding:7px;border-radius:7px;border:1px solid #9885c9;background:#f0eaff;cursor:pointer';
+for(const [id,text] of [['ru-sb-connect','ตั้งค่า'],['ru-sb-refresh','รีเฟรช'],['ru-sb-create','เพิ่ม'],['ru-sb-delete','ลบ'],['ru-sb-photo','รูป'],['ru-sb-login','ลงชื่อเข้าใช้'],])el(id).style.cssText='padding:7px;border-radius:7px;border:1px solid #9885c9;background:#f0eaff;cursor:pointer';
 function url(){const u=String(cfg.url||'').replace(/\/+$/,'');if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(u))throw Error('Supabase URL ไม่ถูกต้อง');return u}
 function key(){const k=String(cfg.anonKey||'');if(!k||k.startsWith('sb_secret_')||k.includes('service_role'))throw Error('ต้องใช้ publishable หรือ anon key เท่านั้น');return k}
 async function raw(route,{method='GET',body,headers={},authenticated=true}={}){
@@ -53,6 +53,13 @@ async function refresh(){
  try{
   const rows=assetsValid(await table('?select=*&deleted_at=is.null&limit=1000'));
   if(!rows.length)throw Error('ตาราง ru_assets ว่าง — ยังไม่แทนข้อมูลบนหน้าด้วยข้อมูลว่าง');
+  const photoRows=rows.filter(a=>a.ru_photo_id&&a.ru_photo_removed!=='1');
+  await Promise.all(photoRows.map(async a=>{
+   const signed=await raw('/storage/v1/object/sign/ru-asset-photos/'+a.ru_photo_id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expiresIn:900})});
+   if(!signed.signedURL)throw Error('Storage ไม่ยืนยันรูป '+a.key);
+   const signedPath=signed.signedURL;
+   a.ru_photo_url=signedPath.startsWith('https://')?signedPath:url()+(signedPath.startsWith('/storage/v1/')?'':'/storage/v1')+(signedPath.startsWith('/')?'':'/')+signedPath;
+  }));
   assets=rows;hook?.apply?.(rows);localStorage.setItem(CACHE,JSON.stringify({at:new Date().toISOString(),count:rows.length}));
   status('✅ ยืนยันจาก Supabase '+rows.length+' รายการ '+new Date().toLocaleTimeString('th-TH'));return true;
  }catch(e){status('❌ '+e.message,true);return false}finally{busy=false}
@@ -110,6 +117,12 @@ async function putPhoto(k,b64,thumb){
  const current=(await table('?key=eq.'+encodeURIComponent(k)+'&select=*&limit=1'))[0];if(!current)throw Error('ไม่พบรหัสครุภัณฑ์');
  const uuid=(crypto?.randomUUID?.()||Math.random().toString(16).slice(2)),p=k+'/'+uuid+'.jpg';
  await raw('/storage/v1/object/ru-asset-photos/'+p,{method:'POST',headers:{'Content-Type':'image/jpeg','x-upsert':'false'},body:bytes});
+ const stored=await raw('/storage/v1/object/authenticated/ru-asset-photos/'+p);
+ if(!(stored instanceof Blob)||stored.size!==bytes.length)throw Error('Storage ยังไม่ยืนยันขนาดไฟล์รูป');
+ const diskBytes=new Uint8Array(await stored.arrayBuffer());
+ const savedHash=new Uint8Array(await crypto.subtle.digest('SHA-256',diskBytes));
+ const sentHash=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
+ if(savedHash.some((b,i)=>b!==sentHash[i]))throw Error('รูปใน Storage ไม่ตรงกับไฟล์ที่ส่ง');
  const saved=await update(k,{ru_photo_id:p,ru_photo_thumb:thumb,ru_photo_url:'',ru_photo_removed:''},current.revision);
  if(saved.ru_photo_id!==p)throw Error('ฐานข้อมูลไม่ยืนยันการผูกภาพ');
  return {ok:true,status:'success',assetId:k,act:'set',fileId:p,imageUrl:'',thumbnail:thumb};
@@ -118,6 +131,7 @@ async function delPhoto(k){
  const current=(await table('?key=eq.'+encodeURIComponent(k)+'&select=*&limit=1'))[0];
  if(!current)throw Error('ไม่พบรหัสครุภัณฑ์');
  await update(k,{ru_photo_id:'',ru_photo_thumb:'',ru_photo_url:'',ru_photo_removed:'1'},current.revision);
+ if(current.ru_photo_id)await raw('/storage/v1/object/ru-asset-photos',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({prefixes:[current.ru_photo_id]})});
  return {ok:true,status:'success',assetId:k,act:'del',fileId:'',imageUrl:''};
 }
 async function call(body){
@@ -139,6 +153,7 @@ async function uploadFromBar(){
 function run(fn){return async()=>{try{await fn()}catch(e){status('❌ '+e.message,true)}}}
 el('ru-sb-connect').onclick=()=>{el('ru-sb-panel').style.display=el('ru-sb-panel').style.display==='none'?'block':'none';el('ru-sb-url').value=cfg.url||'';el('ru-sb-key').value=cfg.anonKey||''};
 el('ru-sb-login').onclick=run(login);
+
 
 el('ru-sb-logout').onclick=()=>{session=null;localStorage.removeItem(SESSKEY);status('ออกจากระบบแล้ว')};
 el('ru-sb-refresh').onclick=run(refresh);
