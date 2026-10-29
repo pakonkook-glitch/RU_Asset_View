@@ -53,10 +53,10 @@ mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 .pebtns{display:flex;gap:8px;flex-wrap:wrap}.pebtns .btn,.pebtns label.btn{flex:1;text-align:center;padding:12px 8px;min-width:30%}.btn.pe{background:#e0f0ff}
 .ntfw{margin:6px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}.btn.ntf{font-size:1.05rem;padding:10px 18px;background:#ffe08a;border:2px solid #f5b800;color:#5a3d00;font-weight:800}
 .neb{margin-top:4px;font-size:.75rem;background:#fff7d6;border:1px solid #f5d56b;border-radius:10px;padding:4px 6px}.neb.dup{background:#ffe4e4;border-color:#f87171}.necx{font-size:.7rem;padding:2px 6px}</style><style>.yr{display:inline-block;font-size:.68rem;background:#eef2ff;color:#4338ca;border-radius:8px;padding:1px 6px;margin-top:2px}.yr.no{background:#f3f4f6;color:#9ca3af}</style></head><body><header class="rtop"><b>📦 RU Asset Database <small>ครุภัณฑ์งานการเงิน</small></b><nav><a href="./#/">รายการครุภัณฑ์</a><a href="./#/stickers">พิมพ์สติกเกอร์</a><a href="assign.html" class="on">🚪 จัดให้พนักงาน</a></nav></header>
-<header><h1>🚪✨ ประตูครุภัณฑ์</h1><div class="ntfw"><button class="btn add ntf" id="ntfb" onclick="openAssetEditor()">✏️ แก้ไขข้อมูลครุภัณฑ์</button> <small id="ntft"></small></div><small>เปิดประตู เลือกของใส่ให้แต่ละคน · <a href="./">← กลับหน้ารายการครุภัณฑ์</a></small></header>
+<header><h1>🚪✨ ประตูครุภัณฑ์</h1><div class="ntfw"><button class="btn add ntf" id="ntfb" onclick="notifyMom()">🔔 แจ้งเจ้าแม่</button> <small id="ntft"></small></div><small>เปิดประตู เลือกของใส่ให้แต่ละคน · <a href="./">← กลับหน้ารายการครุภัณฑ์</a></small></header>
 <div class="wrap">
 <div id="sbad" style="display:none;background:#d62828;color:#fff;padding:10px 12px;border-radius:12px;margin:8px 0;font-weight:bold">⛔ เบราว์เซอร์นี้บันทึกไม่ได้ — <i></i><br><small style="font-weight:normal">ตอนนี้เก็บไว้ชั่วคราวในหน้านี้เท่านั้น ถ้าปิด/รีโหลดจะหาย · กด “ดาวน์โหลดสำรอง (JSON)” หรือเปิดด้วย Chrome/Edge ปกติ (ไม่ใช่โหมดไม่ระบุตัวตน)</small></div>
-<div id="sync" style="padding:8px 10px;border-radius:12px;margin:6px 0;font-size:.85rem;background:#eee"><span>☁️</span> <button class="btn gh" onclick="window.RUCSVHub&&window.RUCSVHub.openImport()">📂 นำเข้า CSV กลาง</button> <button class="btn gh" onclick="batchApplyNumbers()">✅ อนุมัติเลขใน CSV</button></div>
+<div id="sync" style="padding:8px 10px;border-radius:12px;margin:6px 0;font-size:.85rem;background:#eee"><span>☁️</span> <button class="btn gh" onclick="cfgOpen()">⚙️ ตั้งค่าออนไลน์</button> <button class="btn gh" onclick="cfgLink()">🔗 ลิงก์ให้น้อง</button> <button class="btn gh" onclick="kick()">🔄</button></div>
 <div id="cf" class="card" style="display:none;background:#fff3c4"></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0;font-size:.85rem"><span id="sst">💾</span><button class="btn gh" onclick="expj()">💾 ดาวน์โหลดสำรอง (JSON)</button><button class="btn gh" onclick="restoreLast()">↩️ กู้คืนข้อมูลล่าสุด</button></div>
 <label>👤 เลือกชื่อพนักงาน</label><select id="who"></select>
@@ -70,7 +70,7 @@ mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 <div class="card" style="display:flex;gap:8px;flex-wrap:wrap">
 <a class="btn gh stk" id="stkall" target="_blank" rel="noopener">🏷️ พิมพ์สติกเกอร์</a><button class="btn gh" onclick="exp()">⬇️ ส่งออก CSV</button><button class="btn gh" onclick="expj()">💾 สำรอง JSON</button>
 <label class="btn gh">⬆️ นำเข้า JSON/CSV<input type="file" accept=".json,.csv" style="display:none" onchange="imp(this)"></label></div>
-<div class="note">📌 โหมด CSV: ชื่อและเลขครุภัณฑ์อ่านจาก CSV กลางชุดเดียวกับหน้าทะเบียนและหน้าพิมพ์ QR · งานจัดสรรเก็บไว้ในเบราว์เซอร์และสำรองเป็น JSON/CSV ได้ · กดอนุมัติเลขเพื่อสร้าง CSV ใหม่ · ไม่มีการส่งข้อมูลเข้า Apps Script อัตโนมัติ · CSV เริ่มต้นอ้างอิงข้อมูลหน้าเว็บ ณ 26 ต.ค. 2569</div></div>
+<div class="note">📌 เว็บนี้เขียนลงฐานข้อมูลเองไม่ได้ · ที่เลือกไว้เก็บในเบราว์เซอร์นี้ (และออนไลน์ถ้าตั้งค่า ☁️) — กด “ส่งออก CSV” แล้วส่งไฟล์ให้ทีมนำเข้าโปรแกรม จากนั้นหน้าเว็บจะแสดงผู้ใช้ตามฐานข้อมูล · ข้อมูล ณ 26 ต.ค. 2569</div></div>
 <div class="room" id="room" onclick="if(event.target===this)closeDoor()"><div class="sheet">
 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><button class="back" onclick="closeDoor()">← ย้อนกลับ</button><b id="rt" style="flex:1"></b><button class="btn gh" onclick="closeDoor()">🚪 ปิดประตู</button></div>
 <div class="note" id="rh"></div><div class="tabs" id="tabs"></div>
@@ -115,7 +115,7 @@ async function restoreLast(){const L=pj(SNK,[]).filter(x=>x&&x.A);const ib=await
 let CFG=pj(CFK,{});{const u=new URL(location.href),a=u.searchParams.get('api'),t=u.searchParams.get('token');if(a&&t){CFG={api:a,token:t};lsSet(CFK,JSON.stringify(CFG))}if(u.searchParams.has('api')||u.searchParams.has('token')){u.searchParams.delete('api');u.searchParams.delete('token');history.replaceState(history.state,'',u.pathname+u.search+u.hash)}}
 let DEV=lsGet('ru_dev_id');if(!DEV){DEV=Math.random().toString(36).slice(2,8);lsSet('ru_dev_id',DEV)}
 let Q=pj(QK,{}),SYNC={st:'off',t:null,err:''},CF=[],busy=false;
-const on=()=>false; // CSV-only: prevent all legacy online writes
+const on=()=>!!(CFG.api&&CFG.token);
 function qA(k){Q['a|'+k]=1;lsSet(QK,JSON.stringify(Q))}
 function qN(k){Q['n|'+k]=1;lsSet(QK,JSON.stringify(Q))}
 const T0='2000-01-01T00:00:00.000Z';
@@ -139,13 +139,13 @@ async function sync(){if(!on()){SYNC.st='off';badge();return}if(busy)return;busy
   const ks=Object.keys(Q);if(ks.length){const sent=ks.slice();j=await api({action:'upsertMany',ops:sent.map(opOf)});sent.forEach(q=>delete Q[q]);lsSet(QK,JSON.stringify(Q));
    (j.conflicts||[]).forEach(c=>{if(c.loser&&c.winner!==c.loser)CF.unshift({k:c.key,w:c.winner,l:c.loser})});merge(j.items)}
   SYNC.st=Object.keys(Q).length?'wait':'ok';SYNC.t=new Date();SYNC.err=''}catch(e){SYNC.st='err';SYNC.err=String(e.message||e)}finally{busy=false;badge()}}
-let syT=null;function kick(){clearTimeout(syT);badge();/* manual approval only */}
+let syT=null;function kick(){clearTimeout(syT);badge();syT=setTimeout(sync,300)}
 function badge(){const b=document.getElementById('sync');if(!b)return;const n=Object.keys(Q).length;let t,c;
- if(!on()){t='📄 โหมด CSV · เก็บข้อมูลในเครื่อง · ไม่มีการส่ง Apps Script';c='#eee'}
+ if(!on()){t='☁️ ออนไลน์: ยังไม่ได้ตั้งค่า (ใช้ในเครื่องนี้อย่างเดียว)';c='#eee'}
  else if(SYNC.st==='err'){t='❌ ซิงก์ไม่สำเร็จ'+(n?` · รอส่ง ${n} รายการ`:'')+' — '+SYNC.err;c='#ffd6d6'}
  else if(n||SYNC.st==='busy'&&n){t=`⏳ รอส่ง ${n} รายการ`;c='#fff3c4'}
  else if(SYNC.st==='busy'){t='🔄 กำลังซิงก์…';c='#e3f0ff'}
- else{t='☁️ รอคำสั่งจากผู้ใช้ · ไม่มีรายการค้างส่ง';c='#d9f7de'}
+ else{t='✅ ซิงก์แล้ว '+(SYNC.t?hms(SYNC.t):'');c='#d9f7de'}
  b.querySelector("span").textContent=t;b.style.background=c}
 function drawCF(){const e=document.getElementById('cf');if(!e)return;CF=CF.slice(0,20);e.style.display=CF.length?'block':'none';
  e.innerHTML=CF.length?'<b>⚠️ มีผู้จัดแล้ว (ชนกับเครื่องอื่น)</b><button class="btn gh" style="float:right" onclick="CF=[];drawCF()">รับทราบ</button>'+CF.map(c=>`<div>• ${esc(iname(c.k))} → อยู่กับ <b>${esc(lab(c.w))}</b> (ที่เลือกให้ ${esc(lab(c.l))} ไม่ได้)</div>`).join(''):''}
@@ -154,10 +154,10 @@ function cfgOpen(){const a=prompt('วาง Web App URL (ลงท้าย /ex
  const t=prompt('วางรหัส TOKEN',CFG.token||'');if(!t)return;CFG={api:a.trim(),token:t.trim()};lsSet(CFK,JSON.stringify(CFG));kick()}
 function cfgLink(){if(!on()){alert('ตั้งค่าออนไลน์ก่อน');return}const u=location.origin+location.pathname+'?api='+encodeURIComponent(CFG.api)+'&token='+encodeURIComponent(CFG.token);
  (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('คัดลอกลิงก์ให้น้องแล้ว ✓ (อย่าโพสต์ที่สาธารณะ)'),()=>prompt('คัดลอกลิงก์นี้ส่งให้น้อง',u))}
-function commitPending(){if(door&&cur&&SEL.size){const at=new Date().toISOString(),k=[...SEL];SEL=new Set();k.forEach(x=>{A[x]={who:cur,at};delete DELA[x];qA(x)});sv();badge()}}
+function commitPending(){if(door&&cur&&SEL.size){const at=new Date().toISOString(),k=[...SEL];SEL=new Set();k.forEach(x=>{A[x]={who:cur,at};delete DELA[x];qA(x)});sv();if(on())sync()}}
 addEventListener('pagehide',commitPending);document.addEventListener('visibilitychange',()=>{if(document.hidden)commitPending();else if(on())kick()});
 addEventListener('focus',()=>{if(on())kick()});addEventListener('online',()=>{if(on())kick()});
-// No automatic writes; changes wait for the owner's manual approval.
+setInterval(()=>{if(on()&&!document.hidden)sync()},20000);
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const nk=s=>{const m=/^(.*?) \((.*)\)$/.exec(s||'');return m?m[1]:(s||'')},fl=s=>{const m=/^(.*?) \((.*)\)$/.exec(s||'');return m?m[2]:''};
@@ -179,8 +179,7 @@ function draw(){{const g=document.getElementById('gq');if(g&&g.value.trim())setT
  document.getElementById('ob').textContent=`📦 อื่น ๆ (กล้อง แอร์ ฯลฯ) · ว่าง ${nfo}`+(nmo?` · มี ${nmo}`:'');
  const my=DATA.items.filter(i=>cur&&holder(i)===cur);document.getElementById('cnt').textContent=my.length;drawSum();
  document.getElementById('mine').innerHTML=my.length?my.map(i=>row(i,A[i.k]?`<button class="btn rm" onclick="un('${i.k}',this)">↩️ คืน</button>`:'<span class="chip">เดิมใน DB</span>')) .join(''):'<div class="note">ยังไม่มีของเลย เปิดประตูเลือกได้เลย 🚪</div>'}
-function row(i,act,extra=''){const src=i.db_removed?'':i.db_thumb|| (i.ph?'images/th/'+i.ph:'');
- const ph=src?`<img loading="lazy" src="${src}" onclick="event.stopPropagation();lbOpen('${i.k}')" onerror="this.outerHTML='<div class=ph>📷</div>'">`:'<div class="ph">📷</div>';
+function row(i,act,extra=''){const ph=i.ph?`<img loading="lazy" src="images/th/${i.ph}" onclick="event.stopPropagation();lbOpen('${i.k}')" onerror="this.outerHTML='<div class=ph>📷</div>'">`:'<div class="ph">📷</div>';
  return `<div class="row" data-k="${i.k}">${ph}<div class="t">${i.n} ${extra}<small>${i.no}${i.loc?' · '+i.loc:''}</small>${i.y?`<span class="yr">ปี ${i.y}</span>`:'<span class="yr no">ไม่ระบุปี</span>'}${neBadge(i.k)}${peBadge(i.k)}</div><div class="acts">${act}<button class="btn gh ne" onclick="event.stopPropagation();neEdit('${i.k}')">✏️ แก้เลข</button><button class="btn gh pe" onclick="event.stopPropagation();peOpen('${i.k}')">📷 แก้รูป</button></div></div>`}
 const NEK='ru_numedit_pub_v1',DNK='ru_numedit_pub_del_v1';let NE=(()=>{const o=pj(NEK,{}),r={};for(const k in o){const v=o[k];if(v&&v.new)r[k]=Object.assign({key:k},v)}return r})();let DELN=pj(DNK,{});const nesv=()=>{const ok=lsSet(NEK,JSON.stringify(NE))&lsSet(DNK,JSON.stringify(DELN));snap();stat();return !!ok};
 const IM=Object.fromEntries(DATA.items.map(i=>[i.k,i]));
@@ -203,7 +202,7 @@ function kb(n){return n>1048576?(n/1048576).toFixed(1)+' MB':Math.round(n/1024)+
 function peBadge(k){const p=PP[k]||(RP[k]&&!PP[k]?RP[k]:null);if(!p)return '';const mine=!!PP[k];const st=mine?(p.st==='sent'?'☁️ ส่งแล้ว':(on()?'⏳ รอส่ง':'💾 ในเครื่องนี้')):'☁️ จากเครื่องอื่น';
  return `<div class="peb${p.act==='del'?' del':''}">${p.act==='del'?'🗑️ เสนอลบรูป':(p.th?`<img src="${p.th}" alt="" onclick="event.stopPropagation();peView('${k}')">`:'')+'📷 เสนอรูปใหม่'} <span class="chip">รอนำไปใช้</span> <small>${st}</small>${mine?` <button class="btn gh necx" onclick="event.stopPropagation();peCancel('${k}')">↩️ ยกเลิก</button>`:''}</div>`}
 function peOpen(k){const i=IM[k];if(!i)return;PE={k,blob:null,th:'',act:'',w:0,h:0};document.getElementById('pet').innerHTML=`<b>${esc(i.n)}</b><br><small>${esc(i.no||'')}${i.loc?' · '+esc(i.loc):''}</small>`;
- document.getElementById('pecur').innerHTML=(!i.db_removed&&(i.db_thumb||i.ph))?`<img src="${i.db_thumb||('images/th/'+i.ph)}" onerror="this.outerHTML='📷'">`:'<span style="font-size:.8rem">ยังไม่มีรูป</span>';
+ document.getElementById('pecur').innerHTML=i.ph?`<img src="images/th/${i.ph}" onerror="this.outerHTML='📷'">`:'<span style="font-size:.8rem">ยังไม่มีรูป</span>';
  document.getElementById('penew').innerHTML='➕';document.getElementById('pesave').disabled=true;document.getElementById('pedel').style.display=i.ph?'':'none';
  const p=PP[k];document.getElementById('pest').textContent='';
  document.getElementById('peold').innerHTML=p?`<div class="note">มีข้อเสนอเดิม (${p.act==='del'?'ลบรูป':'รูปใหม่'} · ${hms(new Date(p.at))}) — บันทึกใหม่จะแทนข้อเสนอเดิม <button class="btn gh necx" onclick="peCancel('${k}');peClose()">↩️ ยกเลิกข้อเสนอเดิม</button></div>`:'';
@@ -226,7 +225,7 @@ async function peDl(k){const b=await pGet(k);if(!b){alert('ไม่มีไฟ
 function ppDraw(){const ks=[...new Set([...Object.keys(PP),...Object.keys(RP)])].filter(k=>IM[k]);const c=document.getElementById('ppcard');if(!c)return;document.getElementById('ppn').textContent=ks.length;
  document.getElementById('ppst').textContent=PSY.err?('❌ '+PSY.err):(on()?(Object.keys(PQ2).length?`⏳ รอส่งรูป ${Object.keys(PQ2).length}`:(PSY.st==='ok'?'☁️ ซิงก์รูปแล้ว':'')):'💾 เก็บในเครื่องนี้ (ยังไม่ได้ตั้งค่าออนไลน์)');
  document.getElementById('pplist').innerHTML=ks.length?ks.map(k=>{const p=PP[k]||RP[k];return row(IM[k],(PP[k]?`<button class="btn gh" onclick="peView('${k}')">🔍 ดู</button>`+(p.act==='set'?`<button class="btn gh" onclick="peDl('${k}')">⬇️</button>`:''):''))}).join(''):'<div class="note">ยังไม่มีข้อเสนอรูป · กด “📷 แก้รูป” ที่รายการใดก็ได้</div>'}
-let psBusy=false,psT=null;function psKick(){clearTimeout(psT);ppDraw();/* manual approval only */}
+let psBusy=false,psT=null;function psKick(){clearTimeout(psT);ppDraw();psT=setTimeout(photoSync,400)}
 async function photoSync(){if(!on()||psBusy)return;psBusy=true;PSY.st='busy';
  try{for(const k of Object.keys(PQ2)){const q=PQ2[k],p=PP[k];
    if(q.op==='cancel'){await api({action:'photoCancel',key:k,at:q.at});delete PQ2[k];ppsv();continue}
@@ -251,25 +250,8 @@ async function notifyMom(){const b=document.getElementById('ntfb');
  try{await api({action:'upsertMany',ops:[{key:'__notify',kind:'assign',val:'refresh',at,dev:'notify@'+DEV}]});NTF={at,dev:'notify@'+DEV};lsSet(NTK,JSON.stringify(NTF));ntfShow();toast('แจ้งเจ้าแม่แล้ว ✓ สถานะหน้าหลักจะอัปเดตภายในประมาณ 15 นาที')}
  catch(e){toast('ยังส่งไม่ได้ — '+(e.message||e),1)}finally{b.disabled=false}}
 setTimeout(ntfShow,0);
-function openAssetEditor(){
- const query=prompt('ค้นหาครุภัณฑ์ที่ต้องการแก้ (ชื่อ / เลขครุภัณฑ์ / รหัสรายการ)');
- if(query===null)return;
- const q=query.trim().toLocaleLowerCase('th-TH');
- if(!q){toast('กรุณาระบุคำค้นหาก่อน',1);return}
- const found=DATA.items.filter(i=>[i.k,i.n,i.no,i.loc].some(v=>String(v||'').toLocaleLowerCase('th-TH').includes(q))).slice(0,20);
- if(!found.length){toast('ไม่พบรายการที่ค้นหา',1);return}
- const choice=prompt('เลือกรายการตามหมายเลข:\\n'+found.map((i,n)=>(n+1)+'. '+i.n+' ['+i.no+']').join('\\n')+'\\n\\nใส่หมายเลขรายการ (1-'+found.length+')');
- if(choice===null)return;
- const n=Number(choice);if(!Number.isInteger(n)||n<1||n>found.length){toast('หมายเลขรายการไม่ถูกต้อง',1);return}
- const item=found[n-1];
- const action=prompt('รายการ: '+item.n+'\\nเลข: '+item.no+'\\nเลือกสิ่งที่ต้องการแก้\\n1 = เลขครุภัณฑ์ (ข้อเสนอแก้ไข)\\n2 = รูปภาพ (ข้อเสนอแก้ไข)\\n3 = ผู้ครอบครอง (เลือกจากหน้าจัดให้พนักงาน)','1');
- if(action==='1')neEdit(item.k);
- else if(action==='2')peOpen(item.k);
- else if(action==='3'){document.getElementById('gq').value=item.no||item.k;gsearch();document.getElementById('gq').scrollIntoView({behavior:'smooth',block:'center'});toast('เลือกรายชื่อพนักงาน แล้วจัดสรรหรือคืนครุภัณฑ์ในผลค้นหา')}
- else if(action!==null)toast('กรุณาเลือก 1, 2 หรือ 3',1);
-}
 function neRedraw(){draw();if(door)list()}
-async function neEdit(k){const i=IM[k];if(!i)return;const cur0=NE[k]?NE[k].new:i.no;const v=prompt(`เลขครุภัณฑ์ใหม่สำหรับ\n${i.n}\nเลขเดิม: ${i.no}`,cur0);if(v===null)return;const t=v.trim();
+function neEdit(k){const i=IM[k];if(!i)return;const cur0=NE[k]?NE[k].new:i.no;const v=prompt(`เลขครุภัณฑ์ใหม่สำหรับ\n${i.n}\nเลขเดิม: ${i.no}`,cur0);if(v===null)return;const t=v.trim();
  if(!t){alert('ยังไม่ได้ใส่เลขใหม่');return}if(t===String(i.no).trim()){if(NE[k]){delete NE[k];DELN[k]=new Date().toISOString();qN(k);nesv();neRedraw();kick()}toast('เลขเหมือนเดิม ไม่ต้องแก้');return}
  const d=neDups(k,t);if(d.length&&!confirm('⚠️ เลขนี้ซ้ำกับ: '+d.join(', ')+'\nยังต้องการบันทึกเป็นข้อเสนอหรือไม่?'))return;
  NE[k]={key:k,old:i.no,new:t,at:new Date().toISOString()};delete DELN[k];qN(k);nesv();kick();neRedraw();toast(d.length?'บันทึกข้อเสนอแล้ว (⚠️ ซ้ำ)':'บันทึกข้อเสนอเลขใหม่แล้ว ✓',!!d.length)}
@@ -309,7 +291,7 @@ function list(){const q=document.getElementById('q').value.trim(),T=qtoks(q);doc
 function tg(k,b){SEL.has(k)?SEL.delete(k):SEL.add(k);const r=b.closest('.row');r.classList.toggle('sel',SEL.has(k));b.className='btn '+(SEL.has(k)?'add':'gh');b.textContent=SEL.has(k)?'💖 เลือกแล้ว':'＋ เลือก';document.getElementById('sc').textContent=SEL.size}
 function toast(t,bad){let e=document.getElementById('toast');if(!e){e=document.createElement('div');e.id='toast';document.body.appendChild(e)}e.textContent=t;e.className='show'+(bad?' bad':'');clearTimeout(e._t);e._t=setTimeout(()=>e.className='',2600)}
 const LB={s:1,x:0,y:0};function lbApply(){document.getElementById('lbi').style.transform=`translate(calc(-50% + ${LB.x}px),calc(-50% + ${LB.y}px)) scale(${LB.s})`}
-function lbOpen(k){const i=DATA.items.find(x=>x.k===k);if(!i||i.db_removed||!(i.db_thumb||i.ph))return;const im=document.getElementById('lbi');im.onerror=()=>{im.onerror=null;im.src=i.db_thumb||('images/th/'+i.ph)};im.src=i.db_thumb||('images/'+i.ph);document.getElementById('lbc').textContent=i.n+' · '+i.no;LB.s=1;LB.x=0;LB.y=0;lbApply();document.getElementById('lb').classList.add('on');history.pushState({lb:1},'')}
+function lbOpen(k){const i=DATA.items.find(x=>x.k===k);if(!i||!i.ph)return;const im=document.getElementById('lbi');im.onerror=()=>{im.onerror=null;im.src='images/th/'+i.ph};im.src='images/'+i.ph;document.getElementById('lbc').textContent=i.n+' · '+i.no;LB.s=1;LB.x=0;LB.y=0;lbApply();document.getElementById('lb').classList.add('on');history.pushState({lb:1},'')}
 function lbHide(){document.getElementById('lb').classList.remove('on')}function lbClose(){if(history.state&&history.state.lb)history.back();else lbHide()}
 function lbZ(f){LB.s=Math.min(6,Math.max(1,LB.s*f));if(LB.s===1){LB.x=0;LB.y=0}lbApply()}
 (function(){let pts=new Map(),d0=0,s0=1,last=0,mv=false;const v=()=>document.getElementById('lbv');addEventListener('DOMContentLoaded',()=>{});
@@ -330,89 +312,7 @@ function sparkle(x,y){const cs=['#f78fb3','#b8a6ff','#8fd3ff','#9be3b5','#ffd56b
 function un(k,b){if(!confirm('คืนรายการนี้กลับเข้าห้อง?'))return;const r=b.closest('.row');r.style.transform='translateX(60px)';r.style.opacity='0';setTimeout(()=>{delete A[k];DELA[k]=new Date().toISOString();qA(k);sv();kick();draw()},300)}
 function dl(n,t,ty){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:ty}));a.download=n;a.click()}
 function stkUrl(ks){return 'index.html#/stickers?ids='+ks.join(',')}
-function drawNeSum(){ppDraw();const ks=Object.keys(NE);document.getElementById('nesum').innerHTML=ks.length?`<div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>✏️ ข้อเสนอแก้เลข (รออนุมัติลง CSV)</b> <span class="chip" id="nen">${ks.length}</span><button id="applyne" class="btn add" onclick="batchApplyNumbers()">✅ อนุมัติเลขใน CSV</button></div>`+ks.map(k=>IM[k]?row(IM[k],''):'').join(''):''}
-let BATCH_RUNNING=false;
-async function batchApplyNumbers(){
- return window.RUCSVHub ? window.RUCSVHub.approveNumbers() : alert("CSV ยังไม่พร้อม");
- if(BATCH_RUNNING)return;
- if(!on()){alert('ยังไม่ได้ตั้งค่าการเชื่อมต่อ RU Asset DB');return}
- // Number corrections, assignments and photos are proposals until this button is pressed.
- const proposals=Object.keys(NE), assignmentKeys=Object.keys(Q).filter(x=>x.startsWith('a|')).map(x=>x.slice(2));
- const photos=Object.keys(PP).filter(k=>PP[k]&&PP[k].st!=='applied');
- const total=proposals.length+assignmentKeys.length+photos.length;
- if(!total){alert('ไม่มีข้อมูลรออัปเดต');return}
- if(!confirm('บันทึกข้อเสนอไปยัง RU Asset DB จำนวน '+total+' งานหรือไม่?\nเลขครุภัณฑ์ / ผู้ครอบครอง / รูปภาพ\nรายการที่ไม่สำเร็จจะยังค้างไว้'))return;
- BATCH_RUNNING=true;
- const done=[],failed=[],skipped=[];
- const btn=document.getElementById('applyne');
- if(btn){btn.disabled=true;btn.textContent='⏳ กำลังบันทึกลง RU Asset DB'}
- try{
-  const changes=new Map();
-  for(const k of proposals){
-   if(k==='r108'){delete NE[k];DELN[k]=new Date().toISOString();delete Q['n|'+k];skipped.push('r108: ยกเลิกเลขที่เคยเสนอ ไม่เขียน DB');continue}
-   const p=NE[k];if(!p||!p.new){skipped.push(k+': ไม่มีเลขใหม่');continue}
-   const conflict=neDups(k,String(p.new));
-   if(conflict.length){skipped.push(k+': เลขซ้ำ ต้องตรวจสอบก่อน ('+conflict.join(', ')+')');continue}
-   changes.set(k,{key:k,asset_no:String(p.new),expectedOld:String(p.old||'')});
-  }
-  for(const k of assignmentKeys){
-   if(!/^r\d+$/.test(k))continue;
-   const change=changes.get(k)||{key:k};
-   change.assignee=A[k]?A[k].who:'';
-   changes.set(k,change);
-  }
-  if(changes.size){
-   let result;
-   try{result=await api({action:'applyAssetChanges',changes:[...changes.values()]})}
-   catch(e){
-    if(!/unknown action/i.test(String(e.message||e)))throw e;
-    // Compatibility with older backend: number-only, verified per item.
-    const results=[];
-    for(const c of changes.values()){
-     if(Object.prototype.hasOwnProperty.call(c,'assignee')){results.push({key:c.key,ok:false,error:'เซิร์ฟเวอร์ยังไม่รองรับบันทึกผู้ครอบครองใน DB'});continue}
-     try{
-      const j=await api({action:'updateAssetNo',key:c.key,expectedOld:c.expectedOld,newAssetNo:c.asset_no});
-      results.push({key:c.key,ok:j.asset_no===c.asset_no,error:j.asset_no===c.asset_no?'':'ตรวจเลขกลับไม่ตรง'});
-     }catch(ex){results.push({key:c.key,ok:false,error:String(ex.message||ex)})}
-    }
-    result={results};
-   }
-   const now=new Date().toISOString();
-   for(const r of result.results||[]){
-    const c=changes.get(r.key);
-    if(r.ok&&c){
-     if(Object.prototype.hasOwnProperty.call(c,'asset_no')){
-      if(IM[r.key])IM[r.key].no=c.asset_no;
-      delete NE[r.key];DELN[r.key]=now;delete Q['n|'+r.key];
-     }
-     if(Object.prototype.hasOwnProperty.call(c,'assignee'))delete Q['a|'+r.key];
-     done.push(r.key+': เลข/ผู้ครอบครองบันทึกแล้ว');
-    }else failed.push(r.key+': '+(r.error||'บันทึกไม่สำเร็จ'));
-   }
-  }
-  for(const k of photos){
-   const p=PP[k];if(!p)continue;
-   try{
-    const body={action:'photoPut',key:k,act:p.act,th:p.th||''};
-    if(p.act==='set'){
-     const blob=await pGet(k);
-     if(!blob)throw new Error('ไม่พบไฟล์รูปต้นฉบับในเครื่อง');
-     body.b64=await b64of(blob);
-    }
-    await api(body);
-    p.st='applied';delete PP[k];delete RP[k];delete PQ2[k];
-    done.push(k+': รูปภาพบันทึกแล้ว');
-   }catch(e){failed.push(k+': รูปภาพ '+String(e.message||e))}
-  }
-  for(const q of Object.keys(Q))if(q.startsWith('n|')&&!NE[q.slice(2)])delete Q[q];
-  lsSet(QK,JSON.stringify(Q));sv();nesv();ppsv();neRedraw();badge();
-  if(window.RUAssetHub)await window.RUAssetHub.refresh();
-  alert('ผลอัปเดต RU Asset DB\n✅ สำเร็จ '+done.length+' งาน\n⚠️ รอตรวจ '+skipped.length+' งาน\n❌ ไม่สำเร็จ '+failed.length+' งาน\n\n'+[...done,...skipped,...failed].join('\n'));
- }catch(e){
-  sv();nesv();alert('❌ บันทึกไม่ครบ: '+String(e.message||e)+'\nรายการที่ไม่สำเร็จยังค้างอยู่');
- }finally{BATCH_RUNNING=false;neRedraw()}
-}
-
+function drawNeSum(){ppDraw();const ks=Object.keys(NE);document.getElementById('nesum').innerHTML=ks.length?`<div style="margin-top:10px"><b>✏️ ข้อเสนอแก้เลข (รอแก้ใน DB)</b> <span class="chip" id="nen">${ks.length}</span></div>`+ks.map(k=>IM[k]?row(IM[k],''):'').join(''):''}
 function drawSum(){drawNeSum();const g={};DATA.items.forEach(i=>{const h=holder(i);if(h)(g[h]=g[h]||[]).push(i.k)});const all=Object.values(g).flat(),ps=Object.keys(g).sort((a,b)=>g[b].length-g[a].length);
  document.getElementById('sumn').textContent=all.length+' ชิ้น · '+ps.length+' คน';const sa=document.getElementById('stkall');sa.href=all.length?stkUrl(all):'#';sa.style.opacity=all.length?1:.5;sa.onclick=all.length?null:e=>{e.preventDefault();alert('ยังไม่มีของที่จัดสรร')};
  document.getElementById('sum').innerHTML=ps.length?ps.map(p=>`<div class="srow" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed #eee"><span style="flex:1">${esc(lab(p))} <span class="chip">${g[p].length}</span></span><a class="btn gh stk" target="_blank" rel="noopener" href="${stkUrl(g[p])}">🏷️ พิมพ์สติกเกอร์</a></div>`).join(''):'<div class="note">ยังไม่มีการจัดสรร</div>'}
@@ -423,34 +323,7 @@ function imp(el){const f=el.files[0];if(!f)return;f.text().then(t=>{t=t.replace(
  if(/\.csv$/i.test(f.name)){const R=csvP(t),h=R.shift();R.forEach(r=>{const o=Object.fromEntries(h.map((x,j)=>[x,r[j]||'']));if(!o.key)return;if(o.assignee){a[o.key]={who:o.assignee,at:o.assigned_at}}if(o.new_asset_no)n[o.key]={key:o.key,old:o.old_asset_no||(IM[o.key]||{}).no||'',new:o.new_asset_no,at:o.proposed_at}})}
  else{const j=JSON.parse(t);if(j&&j.format==='ru_assign_v2'){a=j.assign||{};n=j.numedit||{}}else{a=j;n=NE}}
  A=normA(a);NE=n;Object.keys(A).forEach(qA);Object.keys(NE).forEach(qN);sv();nesv();kick();draw();alert('นำเข้าแล้ว ✨ (จัดสรร '+Object.keys(A).length+' · ข้อเสนอแก้เลข '+Object.keys(NE).length+')')})}
-window.RUAssetPage={apply:function(assets){
- var used=new Set();
- assets.forEach(function(a){
-  var k=String(a.key||'');if(!k)return;
-  used.add(k);var i=IM[k];
-  if(!i){i={k:k,n:'',no:'',c:'other',h:'',loc:'',y:'',ph:''};IM[k]=i;DATA.items.push(i)}
-  if(a.asset_name!==undefined)i.n=a.asset_name;
-  if(a.asset_no!==undefined)i.no=a.asset_no;
-  if(a.location!==undefined)i.loc=a.location;
-  if(a.fiscal_year)i.y=Number(a.fiscal_year)||a.fiscal_year;
-  i.db_removed=a.ru_photo_removed==='1';
-  i.db_thumb=/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||'')?a.ru_photo_thumb:'';
-  if(!Q['a|'+k]){
-   if(a.assignee)A[k]={who:a.assignee,at:a.updated_at||'2000-01-01T00:00:00.000Z'};
-   else if(A[k]&&A[k].who){} // preserve local assignments; CSV has no private names
-  }
- });
- // Do not delete proposals, assignments, or source image files on refresh.
- QH.clear();DATA.items.sort(ysort);draw();if(door)list();
-}};
-window.RUAssetPage.pendingNumbers=function(){
- return Object.keys(NE).map(k=>({key:k,asset_no:NE[k]&&NE[k].new,old:NE[k]&&NE[k].old})).filter(p=>p.asset_no);
-};
-window.RUAssetPage.commitNumbers=function(keys){
- keys.forEach(k=>{delete NE[k];delete Q['n|'+k];delete DELN[k];});
- lsSet(QK,JSON.stringify(Q));nesv();neRedraw();
-};
-fill();draw();if(!LSOK)showBad();stat();badge();drawCF();if(!LSOK)idbGet().then(b=>{if(b&&b.A&&!Object.keys(A).length&&Object.keys(b.A).length){A=normA(b.A);NE=b.NE||{};draw();toast('ดึงข้อมูลจากสำรอง IndexedDB แล้ว')}});// no auto-sync on page load
+fill();draw();if(!LSOK)showBad();stat();badge();drawCF();if(!LSOK)idbGet().then(b=>{if(b&&b.A&&!Object.keys(A).length&&Object.keys(b.A).length){A=normA(b.A);NE=b.NE||{};draw();toast('ดึงข้อมูลจากสำรอง IndexedDB แล้ว')}});if(on())sync();
 addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElementById('lb').classList.contains('on')){lbHide();return}if(door)closeDoor()});
 </script><div class="room" id="pe" onclick="if(event.target===this)peClose()"><div class="pesh">
 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><button class="peback" onclick="peClose()">← ปิด</button><b style="flex:1">📷 แก้รูป (ข้อเสนอ)</b></div>
@@ -461,4 +334,4 @@ addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElement
 <div class="note">ℹ️ เป็น “ข้อเสนอ” — ยังไม่เปลี่ยนรูปจริงใน DB/เว็บ จนกว่าพี่ไก่จะนำไปใช้ · 1 รูปต่อ 1 ครุภัณฑ์ · หลีกเลี่ยงการถ่ายติดชื่อคน/เอกสาร (จะเบลอก่อนใช้จริง)</div>
 <div class="pebar" style="display:flex;gap:8px;margin-top:10px"><button class="btn gh" style="flex:1" onclick="peClose()">ยกเลิก</button><button class="btn add" id="pesave" style="flex:2" disabled onclick="peSave()">✅ บันทึกข้อเสนอ</button></div>
 <div id="peold"></div></div></div>
-<div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="csv-hub.js"></script><!-- RU_CSV_ONLY_20261029 --></body></html>
+<div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div></body></html>
