@@ -271,16 +271,6 @@ function neRedraw(){draw();if(door)list()}
 async function neEdit(k){const i=IM[k];if(!i)return;const cur0=NE[k]?NE[k].new:i.no;const v=prompt(`เลขครุภัณฑ์ใหม่สำหรับ\n${i.n}\nเลขเดิม: ${i.no}`,cur0);if(v===null)return;const t=v.trim();
  if(!t){alert('ยังไม่ได้ใส่เลขใหม่');return}if(t===String(i.no).trim()){if(NE[k]){delete NE[k];DELN[k]=new Date().toISOString();qN(k);nesv();neRedraw();kick()}toast('เลขเหมือนเดิม ไม่ต้องแก้');return}
  const d=neDups(k,t);if(d.length&&!confirm('⚠️ เลขนี้ซ้ำกับ: '+d.join(', ')+'\nยังต้องการบันทึกเป็นข้อเสนอหรือไม่?'))return;
- // Write to the master DB when the deployed backend supports updateAssetNo.
- // Preserve the old proposal workflow if the write fails or is not installed.
- if(on()&&confirm('บันทึกเลขใหม่นี้ลง RU Asset DB ทันทีหรือไม่?')){
-  try{
-   const j=await api({action:'updateAssetNo',key:k,expectedOld:i.no||'',newAssetNo:t});
-   if(j.asset_no!==t)throw new Error('เลขที่อ่านกลับไม่ตรง');
-   i.no=t;QH.delete(k);delete NE[k];DELN[k]=new Date().toISOString();qN(k);nesv();neRedraw();kick();
-   toast('✅ บันทึกลง RU Asset DB แล้ว: '+k);return;
-  }catch(e){alert('ยังบันทึกลง RU Asset DB ไม่สำเร็จ: '+(e.message||e)+'\nระบบจะเก็บเป็นข้อเสนอรอส่งแทน')}
- }
  NE[k]={key:k,old:i.no,new:t,at:new Date().toISOString()};delete DELN[k];qN(k);nesv();kick();neRedraw();toast(d.length?'บันทึกข้อเสนอแล้ว (⚠️ ซ้ำ)':'บันทึกข้อเสนอเลขใหม่แล้ว ✓',!!d.length)}
 function neCancel(k){if(!confirm('ยกเลิกข้อเสนอแก้เลขนี้?'))return;delete NE[k];DELN[k]=new Date().toISOString();qN(k);nesv();neRedraw();kick();toast('ยกเลิกแล้ว')}
 function openDoor(c,pq){if(!cur){alert('เลือกชื่อพนักงานก่อนนะคะ 😊');return}if(!(history.state&&history.state.door))history.pushState({door:c.id},'');door=c;SEL=new Set();tab=c.tabs?c.tabs[0][0]:'';draw();
@@ -339,7 +329,51 @@ function sparkle(x,y){const cs=['#f78fb3','#b8a6ff','#8fd3ff','#9be3b5','#ffd56b
 function un(k,b){if(!confirm('คืนรายการนี้กลับเข้าห้อง?'))return;const r=b.closest('.row');r.style.transform='translateX(60px)';r.style.opacity='0';setTimeout(()=>{delete A[k];DELA[k]=new Date().toISOString();qA(k);sv();kick();draw()},300)}
 function dl(n,t,ty){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:ty}));a.download=n;a.click()}
 function stkUrl(ks){return 'index.html#/stickers?ids='+ks.join(',')}
-function drawNeSum(){ppDraw();const ks=Object.keys(NE);document.getElementById('nesum').innerHTML=ks.length?`<div style="margin-top:10px"><b>✏️ ข้อเสนอแก้เลข (รอแก้ใน DB)</b> <span class="chip" id="nen">${ks.length}</span></div>`+ks.map(k=>IM[k]?row(IM[k],''):'').join(''):''}
+function drawNeSum(){ppDraw();const ks=Object.keys(NE);document.getElementById('nesum').innerHTML=ks.length?`<div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>✏️ ข้อเสนอแก้เลข (รอแก้ใน DB)</b> <span class="chip" id="nen">${ks.length}</span><button id="applyne" class="btn add" onclick="batchApplyNumbers()">✅ อัปเดตเลขทั้งหมดลง DB</button></div>`+ks.map(k=>IM[k]?row(IM[k],''):'').join(''):''}
+let BATCH_RUNNING=false;
+async function batchApplyNumbers(){
+ if(BATCH_RUNNING)return;
+ if(!on()){alert('กรุณาตั้งค่าออนไลน์ก่อน จึงจะบันทึกลง RU Asset DB ได้');return}
+ const ks=Object.keys(NE);
+ if(!ks.length){toast('ไม่มีข้อเสนอรออัปเดต');return}
+ if(!confirm('ตรวจสอบและบันทึกข้อเสนอเลขครุภัณฑ์ '+ks.length+' รายการลง RU Asset DB หรือไม่?\nรายการเลขเดิมไม่ตรงและเลขซ้ำจะไม่ถูกเขียนโดยอัตโนมัติ'))return;
+ BATCH_RUNNING=true;const btn=document.getElementById('applyne');if(btn){btn.disabled=true;btn.textContent='⏳ กำลังตรวจข้อมูล…'}
+ const done=[],skipped=[],failed=[];
+ try{
+  const response=await api({action:'getAssets'});
+  const db=new Map((response.assets||[]).map(x=>[x.key,x]));
+  for(const k of ks){
+   const p=NE[k],a=db.get(k);
+   if(!p)continue;
+   if(k==='r108'){skipped.push(k+' (ยกเลิกข้อเสนอเดิมตามคำสั่ง)');continue}
+   if(!a){skipped.push(k+' (ไม่พบ key ใน DB)');continue}
+   const old=String(a.asset_no||'').trim(),want=String(p.new||'').trim(),expected=String(p.old||'').trim();
+   if(!want){skipped.push(k+' (เลขใหม่ว่าง)');continue}
+   if(old===want){done.push(k+' (มีเลขนี้ใน DB แล้ว)');continue}
+   if(old!==expected){skipped.push(k+' (เลขเดิมใน DB ไม่ตรงกับข้อเสนอ)');continue}
+   const dup=(response.assets||[]).filter(x=>x.key!==k&&String(x.asset_no||'').trim()===want);
+   if(dup.length){skipped.push(k+' (เลขใหม่ซ้ำกับ '+dup.map(x=>x.key).join(', ')+')');continue}
+   try{
+    const j=await api({action:'updateAssetNo',key:k,expectedOld:old,newAssetNo:want});
+    if(String(j.asset_no||'').trim()!==want)throw new Error('ผลอ่านกลับไม่ตรง');
+    done.push(k+' (บันทึกแล้ว)');
+   }catch(e){failed.push(k+' ('+(e.message||e)+')')}
+  }
+  // Only clear successful/already-applied proposals; preserve all failures for review.
+  const now=new Date().toISOString();
+  for(const entry of done){
+   const k=entry.split(' ')[0],p=NE[k];
+   if(!p)continue;
+   if(IM[k])IM[k].no=p.new;
+   delete NE[k];DELN[k]=now;qN(k);
+  }
+  // r108 was explicitly rejected by the owner: discard without altering the master.
+  if(NE.r108){delete NE.r108;DELN.r108=now;qN('r108')}
+  nesv();neRedraw();kick();
+  alert('อัปเดตฐานข้อมูลเสร็จสิ้น\n✅ สำเร็จ/มีอยู่แล้ว '+done.length+' รายการ\n⚠️ ข้าม '+skipped.length+' รายการ\n❌ ผิดพลาด '+failed.length+' รายการ\n\n'+[...done,...skipped,...failed].join('\n'));
+ }catch(e){alert('ยังไม่บันทึกข้อเสนอ: '+(e.message||e)+'\nข้อเสนอทั้งหมดที่ยังไม่สำเร็จยังค้างอยู่')}
+ finally{BATCH_RUNNING=false;drawNeSum()}
+}
 function drawSum(){drawNeSum();const g={};DATA.items.forEach(i=>{const h=holder(i);if(h)(g[h]=g[h]||[]).push(i.k)});const all=Object.values(g).flat(),ps=Object.keys(g).sort((a,b)=>g[b].length-g[a].length);
  document.getElementById('sumn').textContent=all.length+' ชิ้น · '+ps.length+' คน';const sa=document.getElementById('stkall');sa.href=all.length?stkUrl(all):'#';sa.style.opacity=all.length?1:.5;sa.onclick=all.length?null:e=>{e.preventDefault();alert('ยังไม่มีของที่จัดสรร')};
  document.getElementById('sum').innerHTML=ps.length?ps.map(p=>`<div class="srow" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed #eee"><span style="flex:1">${esc(lab(p))} <span class="chip">${g[p].length}</span></span><a class="btn gh stk" target="_blank" rel="noopener" href="${stkUrl(g[p])}">🏷️ พิมพ์สติกเกอร์</a></div>`).join(''):'<div class="note">ยังไม่มีการจัดสรร</div>'}
