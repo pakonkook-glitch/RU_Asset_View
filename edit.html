@@ -3216,7 +3216,11 @@ function sitePhoto(k){var P=CFG.photos||{};var o=P[k];if(!o)return null;var S=CF
 function photoEl(k,compact,cls){
  var master=DBPH[k];
  if(master&&master.removed){var d=el('div','ra-photo ra-photo-empty'+(compact?' compact':'')+(cls?' '+cls:''));d.innerHTML=CAM+'<span>ไม่มีรูป</span>';return d}
- if(master&&master.thumb){var v=el('img','ra-photo'+(cls?' '+cls:''));v.src=master.thumb;v.alt='';v.loading='lazy';return v}
+ if(master&&(master.thumb||master.url)){
+ var v=el('img','ra-photo'+(cls?' '+cls:''));
+ v.src=master.url||master.thumb;v.alt='';v.loading='lazy';
+ v.onerror=function(){if(master.thumb&&v.src!==master.thumb){v.onerror=null;v.src=master.thumb}};
+ return v}
  var L=PH[k];if(L&&L.length){var im=el('img','ra-photo'+(cls?' '+cls:''));im.src=L[0].th||L[0].d;im.alt='';im.loading='lazy';return im}
  var sp=sitePhoto(k);if(sp){var im2=el('img','ra-photo ra-site-photo'+(cls?' '+cls:''));im2.src=compact?sp.th:sp.src;im2.alt='';im2.loading='lazy';im2.decoding='async';im2.dataset.site=sp.kind;return im2}
  var d=el('div','ra-photo ra-photo-empty'+(compact?' compact':'')+(cls?' '+cls:''));d.setAttribute('aria-label','ไม่มีรูป');d.innerHTML=CAM+'<span>ไม่มีรูป</span>';return d}
@@ -3382,7 +3386,14 @@ function renderForm(main,k){if(!canEdit()){location.hash='#/';return}
  var p=el('div','panel ra-form-panel');p.id='formpage';var head=el('div','ra-form-head');head.appendChild(el('h2',null,nw?(isNew?'เพิ่มครุภัณฑ์ใหม่':'แก้ไขรายการที่เพิ่มใหม่'):'แก้ไขครุภัณฑ์ '+(b.tag||b.name||'')));head.appendChild(link('ra-btn ghost','← กลับไปรายการ','#/'));p.appendChild(head);
  if(!nw)p.appendChild(el('p','ra-hint','key: '+k+(b.b?' · B เดิม: '+b.b:'')+(b.tag?' · เลขเดิม: '+b.tag:'')));
  // photo row
- fPh=(PH[k]||[]).slice();var pr=el('div','ra-photo-row');var dz=el('div','dropzone ra-dropzone');dz.appendChild(el('p',null,'📷 ลากวาง'+labelOf('photo')+'ที่นี่ หรือเลือกไฟล์ / ถ่ายรูป'));
+ fPh=(PH[k]||[]).slice();
+ if(!nw){
+  var central=el('div','panel');central.appendChild(el('h3',null,'📷 รูปครุภัณฑ์ในฐานข้อมูลกลาง'));
+  central.appendChild(el('p','ra-hint','เพิ่ม เปลี่ยน หรือลบรูปผ่านระบบออนไลน์เดียวกัน เพื่อให้ทุกหน้าและทุกเครื่องเห็นรูปตรงกัน'));
+  central.appendChild(link('ra-btn primary','📷 จัดการรูปภาพบน Google Drive','assign.html?photo='+encodeURIComponent(k)));
+  p.appendChild(central);
+ }else{
+ var pr=el('div','ra-photo-row');var dz=el('div','dropzone ra-dropzone');dz.appendChild(el('p',null,'📷 ลากวาง'+labelOf('photo')+'ที่นี่ หรือเลือกไฟล์ / ถ่ายรูป'));
  var bw=el('div','ra-hero-actions');var fi=el('input');fi.type='file';fi.accept='image/*';fi.multiple=true;fi.hidden=true;fi.id='f_photo';var fc=el('input');fc.type='file';fc.accept='image/*';fc.setAttribute('capture','environment');fc.hidden=true;
  bw.appendChild(btn('ra-btn','เลือกไฟล์รูป',function(){fi.value='';fi.click()}));bw.appendChild(btn('ra-btn','📷 ถ่ายรูป',function(){fc.value='';fc.click()}));dz.appendChild(bw);dz.appendChild(fi);dz.appendChild(fc);
  dz.appendChild(el('span','ra-hint','สูงสุด '+MAXPH+' รูป · ย่อขนาดอัตโนมัติ · เก็บในเครื่องนี้'));
@@ -3395,6 +3406,7 @@ function renderForm(main,k){if(!canEdit()){location.hash='#/';return}
  function addFiles(fl){var files=Array.prototype.slice.call(fl||[]).filter(function(f){return !f.type||f.type.indexOf('image/')===0});var room=MAXPH-fPh.length;files=files.slice(0,room);if(!files.length)return;var list=fPh;phBusy++;phRender();
   files.reduce(function(pp,f){return pp.then(function(){return makePhoto(f).then(function(o){list.push(o)},function(er){toast(er.message)})})},Promise.resolve()).then(function(){phBusy--;if(list===fPh)phRender()})}
  phRender();
+ }
  // fields
  var form=el('form');form.autocomplete='off';var grid=el('div','grid2 ra-form-grid');
  fieldsFor('form').filter(function(f){return f.type!=='image'}).forEach(function(f){var lab=el('label',f.full?'ra-full':'');var sp=el('span',null,f.label);if(f.required){var rq=el('b','ra-req',' *');sp.appendChild(rq)}lab.appendChild(sp);
@@ -3420,7 +3432,7 @@ function renderForm(main,k){if(!canEdit()){location.hash='#/';return}
   var o2=PH[k]||[];if(!(o2.length===fPh.length&&o2.every(function(x,i){return x===fPh[i]})))setPhotos(k,fPh);save()}
  form.onsubmit=function(ev){ev.preventDefault();if(phBusy){toast('กำลังย่อรูป รอสักครู่…');return}var nmv=$('f_name').value.trim();if(nw&&!nmv){toast('กรุณากรอกชื่อครุภัณฑ์');$('f_name').focus();return}collect(null);location.hash=nw?'#item='+encodeURIComponent(k):'#/';toast(nw?'เพิ่มครุภัณฑ์ในเครื่องนี้แล้ว':'บันทึกการแก้ไขในเครื่องนี้แล้ว')};
  p.appendChild(form);main.appendChild(p)}
-function quickPhoto(k,update){var fi=$('qpfile');fi.value='';fi.onchange=function(){var f=fi.files&&fi.files[0];if(!f)return;toast('กำลังย่อรูป…');makePhoto(f).then(function(o){return setPhotos(k,[o].concat((PH[k]||[]).slice(1)))}).then(function(){toast('บันทึกรูปในเครื่องนี้แล้ว');update()},function(e){toast(e.message)})};fi.click()}
+function quickPhoto(k,update){if(baseByK[k]){location.href='assign.html?photo='+encodeURIComponent(k);return}var fi=$('qpfile');fi.value='';fi.onchange=function(){var f=fi.files&&fi.files[0];if(!f)return;toast('กำลังย่อรูป…');makePhoto(f).then(function(o){return setPhotos(k,[o].concat((PH[k]||[]).slice(1)))}).then(function(){toast('บันทึกรูปในเครื่องนี้แล้ว');update()},function(e){toast(e.message)})};fi.click()}
 function markDelete(k){var e=store.edits[k];if(e){e.del=!e.del;e.t=new Date().toISOString();if(!e.del&&!Object.keys(e.f||{}).length&&!e.serial&&!e.note&&!e.isNew)delete store.edits[k]}else store.edits[k]={f:{},serial:'',note:'',del:true,isNew:false,t:new Date().toISOString()};save();toast(store.edits[k]&&store.edits[k].del?'ทำเครื่องหมายลบแล้ว (ยังไม่ลบจริง)':'ยกเลิกเครื่องหมายลบแล้ว')}
 // ---------- STICKERS ----------
 function renderStickers(main,ids){if(ids&&ids.length){sel={};ids.forEach(function(k){if(k)sel[k]=1});saveSel();history.replaceState(null,'','#/stickers')}
@@ -3496,8 +3508,10 @@ window.RUAssetPage={apply:function(assets){
   if(a.status&&!old.status)r.status=a.status;
   if(a.barcode)r.b=a.barcode;
   if(a.ru_photo_removed==='1')DBPH[k]={removed:true};
-  else if(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||''))DBPH[k]={thumb:a.ru_photo_thumb};
-  else delete DBPH[k];
+  else if(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||'')){
+   DBPH[k]={thumb:a.ru_photo_thumb,
+    url:/^https:\/\/lh3\.googleusercontent\.com\/d\/[A-Za-z0-9_-]+$/.test(a.ru_photo_url||'')?a.ru_photo_url:''};
+  }else delete DBPH[k];
   next.push(r);newByK[k]=r;
  });
  BASE=next;baseByK=newByK;

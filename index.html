@@ -3215,7 +3215,11 @@ function sitePhoto(k){var P=CFG.photos||{};var o=P[k];if(!o)return null;var S=CF
 function photoEl(k,compact,cls){
  var master=DBPH[k];
  if(master&&master.removed){var d=el('div','ra-photo ra-photo-empty'+(compact?' compact':'')+(cls?' '+cls:''));d.innerHTML=CAM+'<span>ไม่มีรูป</span>';return d}
- if(master&&master.thumb){var v=el('img','ra-photo'+(cls?' '+cls:''));v.src=master.thumb;v.alt='';v.loading='lazy';return v}
+ if(master&&(master.thumb||master.url)){
+ var v=el('img','ra-photo'+(cls?' '+cls:''));
+ v.src=master.url||master.thumb;v.alt='';v.loading='lazy';
+ v.onerror=function(){if(master.thumb&&v.src!==master.thumb){v.onerror=null;v.src=master.thumb}};
+ return v}
  var L=PH[k];if(L&&L.length){var im=el('img','ra-photo'+(cls?' '+cls:''));im.src=L[0].th||L[0].d;im.alt='';im.loading='lazy';return im}
  var sp=sitePhoto(k);if(sp){var im2=el('img','ra-photo ra-site-photo'+(cls?' '+cls:''));im2.src=compact?sp.th:sp.src;im2.alt='';im2.loading='lazy';im2.decoding='async';im2.dataset.site=sp.kind;return im2}
  var d=el('div','ra-photo ra-photo-empty'+(compact?' compact':'')+(cls?' '+cls:''));d.setAttribute('aria-label','ไม่มีรูป');d.innerHTML=CAM+'<span>ไม่มีรูป</span>';return d}
@@ -3495,8 +3499,10 @@ window.RUAssetPage={apply:function(assets){
   if(a.status&&!old.status)r.status=a.status;
   if(a.barcode)r.b=a.barcode;
   if(a.ru_photo_removed==='1')DBPH[k]={removed:true};
-  else if(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||''))DBPH[k]={thumb:a.ru_photo_thumb};
-  else delete DBPH[k];
+  else if(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||'')){
+   DBPH[k]={thumb:a.ru_photo_thumb,
+    url:/^https:\/\/lh3\.googleusercontent\.com\/d\/[A-Za-z0-9_-]+$/.test(a.ru_photo_url||'')?a.ru_photo_url:''};
+  }else delete DBPH[k];
   next.push(r);newByK[k]=r;
  });
  BASE=next;baseByK=newByK;

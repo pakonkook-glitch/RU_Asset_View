@@ -82,6 +82,22 @@ if(sendButton)sendButton.onclick=async function(){
  }catch(e){alert('❌ บันทึกไม่ครบ: '+String(e.message||e)+'\\nกรุณาดึง DB และตรวจสอบก่อนลองส่งใหม่')}
  finally{sendButton.disabled=false;sendButton.textContent='💾 ส่งการแก้ไขลง RU Asset DB'}
 };
-window.RUAssetHub={refresh:refresh,readCache:function(){return read(CACHE)}};
+function photoConfirmed(j,thumb){
+ if(!j||j.status!=='success'||!/^r\d+$/.test(j.assetId||''))return false;
+ var data=read(CACHE);
+ if(!data||!Array.isArray(data.assets))return false;
+ var item=data.assets.find(function(a){return a.key===j.assetId});
+ if(!item)return false;
+ item.ru_photo_id=j.fileId||'';
+ item.ru_photo_thumb=j.act==='del'?'':(thumb||j.thumbnail||'');
+ item.ru_photo_url=j.act==='del'?'':j.imageUrl;
+ item.ru_photo_removed=j.act==='del'?'1':'';
+ try{localStorage.setItem(CACHE,JSON.stringify(data))}catch(e){}
+ hook.apply(data.assets);
+ return true;
+}
+window.RUAssetHub={refresh:refresh,readCache:function(){return read(CACHE)},photoConfirmed:photoConfirmed};
+var cfgInit=read(CONFIG);
+if(cfgInit&&cfgInit.api&&cfgInit.token)setTimeout(refresh,250);
 window.addEventListener('storage',function(e){if(e.key===CACHE){var v=read(CACHE);if(v)try{apply(v,'cache')}catch(err){note('⚠️ อัปเดตจากอีกแท็บไม่สำเร็จ: '+err.message)}}});
 })();
