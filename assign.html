@@ -53,7 +53,7 @@ mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 .pebtns{display:flex;gap:8px;flex-wrap:wrap}.pebtns .btn,.pebtns label.btn{flex:1;text-align:center;padding:12px 8px;min-width:30%}.btn.pe{background:#e0f0ff}
 .ntfw{margin:6px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}.btn.ntf{font-size:1.05rem;padding:10px 18px;background:#ffe08a;border:2px solid #f5b800;color:#5a3d00;font-weight:800}
 .neb{margin-top:4px;font-size:.75rem;background:#fff7d6;border:1px solid #f5d56b;border-radius:10px;padding:4px 6px}.neb.dup{background:#ffe4e4;border-color:#f87171}.necx{font-size:.7rem;padding:2px 6px}</style><style>.yr{display:inline-block;font-size:.68rem;background:#eef2ff;color:#4338ca;border-radius:8px;padding:1px 6px;margin-top:2px}.yr.no{background:#f3f4f6;color:#9ca3af}</style></head><body><header class="rtop"><b>📦 RU Asset Database <small>ครุภัณฑ์งานการเงิน</small></b><nav><a href="./#/">รายการครุภัณฑ์</a><a href="./#/stickers">พิมพ์สติกเกอร์</a><a href="assign.html" class="on">🚪 จัดให้พนักงาน</a></nav></header>
-<header><h1>🚪✨ ประตูครุภัณฑ์</h1><div class="ntfw"><button class="btn add ntf" id="ntfb" onclick="notifyMom()">🔔 แจ้งเจ้าแม่</button> <small id="ntft"></small></div><small>เปิดประตู เลือกของใส่ให้แต่ละคน · <a href="./">← กลับหน้ารายการครุภัณฑ์</a></small></header>
+<header><h1>🚪✨ ประตูครุภัณฑ์</h1><div class="ntfw"><button class="btn add ntf" id="ntfb" onclick="openAssetEditor()">✏️ แก้ไขข้อมูลครุภัณฑ์</button> <small id="ntft"></small></div><small>เปิดประตู เลือกของใส่ให้แต่ละคน · <a href="./">← กลับหน้ารายการครุภัณฑ์</a></small></header>
 <div class="wrap">
 <div id="sbad" style="display:none;background:#d62828;color:#fff;padding:10px 12px;border-radius:12px;margin:8px 0;font-weight:bold">⛔ เบราว์เซอร์นี้บันทึกไม่ได้ — <i></i><br><small style="font-weight:normal">ตอนนี้เก็บไว้ชั่วคราวในหน้านี้เท่านั้น ถ้าปิด/รีโหลดจะหาย · กด “ดาวน์โหลดสำรอง (JSON)” หรือเปิดด้วย Chrome/Edge ปกติ (ไม่ใช่โหมดไม่ระบุตัวตน)</small></div>
 <div id="sync" style="padding:8px 10px;border-radius:12px;margin:6px 0;font-size:.85rem;background:#eee"><span>☁️</span> <button class="btn gh" onclick="cfgOpen()">⚙️ ตั้งค่าออนไลน์</button> <button class="btn gh" onclick="cfgLink()">🔗 ลิงก์ให้น้อง</button> <button class="btn gh" onclick="kick()">🔄</button></div>
@@ -250,10 +250,37 @@ async function notifyMom(){const b=document.getElementById('ntfb');
  try{await api({action:'upsertMany',ops:[{key:'__notify',kind:'assign',val:'refresh',at,dev:'notify@'+DEV}]});NTF={at,dev:'notify@'+DEV};lsSet(NTK,JSON.stringify(NTF));ntfShow();toast('แจ้งเจ้าแม่แล้ว ✓ สถานะหน้าหลักจะอัปเดตภายในประมาณ 15 นาที')}
  catch(e){toast('ยังส่งไม่ได้ — '+(e.message||e),1)}finally{b.disabled=false}}
 setTimeout(ntfShow,0);
+function openAssetEditor(){
+ const query=prompt('ค้นหาครุภัณฑ์ที่ต้องการแก้ (ชื่อ / เลขครุภัณฑ์ / รหัสรายการ)');
+ if(query===null)return;
+ const q=query.trim().toLocaleLowerCase('th-TH');
+ if(!q){toast('กรุณาระบุคำค้นหาก่อน',1);return}
+ const found=DATA.items.filter(i=>[i.k,i.n,i.no,i.loc].some(v=>String(v||'').toLocaleLowerCase('th-TH').includes(q))).slice(0,20);
+ if(!found.length){toast('ไม่พบรายการที่ค้นหา',1);return}
+ const choice=prompt('เลือกรายการตามหมายเลข:\\n'+found.map((i,n)=>(n+1)+'. '+i.n+' ['+i.no+']').join('\\n')+'\\n\\nใส่หมายเลขรายการ (1-'+found.length+')');
+ if(choice===null)return;
+ const n=Number(choice);if(!Number.isInteger(n)||n<1||n>found.length){toast('หมายเลขรายการไม่ถูกต้อง',1);return}
+ const item=found[n-1];
+ const action=prompt('รายการ: '+item.n+'\\nเลข: '+item.no+'\\nเลือกสิ่งที่ต้องการแก้\\n1 = เลขครุภัณฑ์ (ข้อเสนอแก้ไข)\\n2 = รูปภาพ (ข้อเสนอแก้ไข)\\n3 = ผู้ครอบครอง (เลือกจากหน้าจัดให้พนักงาน)','1');
+ if(action==='1')neEdit(item.k);
+ else if(action==='2')peOpen(item.k);
+ else if(action==='3'){document.getElementById('gq').value=item.no||item.k;gsearch();document.getElementById('gq').scrollIntoView({behavior:'smooth',block:'center'});toast('เลือกรายชื่อพนักงาน แล้วจัดสรรหรือคืนครุภัณฑ์ในผลค้นหา')}
+ else if(action!==null)toast('กรุณาเลือก 1, 2 หรือ 3',1);
+}
 function neRedraw(){draw();if(door)list()}
-function neEdit(k){const i=IM[k];if(!i)return;const cur0=NE[k]?NE[k].new:i.no;const v=prompt(`เลขครุภัณฑ์ใหม่สำหรับ\n${i.n}\nเลขเดิม: ${i.no}`,cur0);if(v===null)return;const t=v.trim();
+async function neEdit(k){const i=IM[k];if(!i)return;const cur0=NE[k]?NE[k].new:i.no;const v=prompt(`เลขครุภัณฑ์ใหม่สำหรับ\n${i.n}\nเลขเดิม: ${i.no}`,cur0);if(v===null)return;const t=v.trim();
  if(!t){alert('ยังไม่ได้ใส่เลขใหม่');return}if(t===String(i.no).trim()){if(NE[k]){delete NE[k];DELN[k]=new Date().toISOString();qN(k);nesv();neRedraw();kick()}toast('เลขเหมือนเดิม ไม่ต้องแก้');return}
  const d=neDups(k,t);if(d.length&&!confirm('⚠️ เลขนี้ซ้ำกับ: '+d.join(', ')+'\nยังต้องการบันทึกเป็นข้อเสนอหรือไม่?'))return;
+ // Write to the master DB when the deployed backend supports updateAssetNo.
+ // Preserve the old proposal workflow if the write fails or is not installed.
+ if(on()&&confirm('บันทึกเลขใหม่นี้ลง RU Asset DB ทันทีหรือไม่?')){
+  try{
+   const j=await api({action:'updateAssetNo',key:k,expectedOld:i.no||'',newAssetNo:t});
+   if(j.asset_no!==t)throw new Error('เลขที่อ่านกลับไม่ตรง');
+   i.no=t;QH.delete(k);delete NE[k];DELN[k]=new Date().toISOString();qN(k);nesv();neRedraw();kick();
+   toast('✅ บันทึกลง RU Asset DB แล้ว: '+k);return;
+  }catch(e){alert('ยังบันทึกลง RU Asset DB ไม่สำเร็จ: '+(e.message||e)+'\nระบบจะเก็บเป็นข้อเสนอรอส่งแทน')}
+ }
  NE[k]={key:k,old:i.no,new:t,at:new Date().toISOString()};delete DELN[k];qN(k);nesv();kick();neRedraw();toast(d.length?'บันทึกข้อเสนอแล้ว (⚠️ ซ้ำ)':'บันทึกข้อเสนอเลขใหม่แล้ว ✓',!!d.length)}
 function neCancel(k){if(!confirm('ยกเลิกข้อเสนอแก้เลขนี้?'))return;delete NE[k];DELN[k]=new Date().toISOString();qN(k);nesv();neRedraw();kick();toast('ยกเลิกแล้ว')}
 function openDoor(c,pq){if(!cur){alert('เลือกชื่อพนักงานก่อนนะคะ 😊');return}if(!(history.state&&history.state.door))history.pushState({door:c.id},'');door=c;SEL=new Set();tab=c.tabs?c.tabs[0][0]:'';draw();
