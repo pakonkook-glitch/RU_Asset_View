@@ -3181,6 +3181,8 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast
 var store={v:1,edits:{}};
 if(EDIT){var s0=lsGet(LS_KEY,null);if(s0&&s0.v===1&&s0.edits)store=s0}
 function save(){lsSet(LS_KEY,store)}
+// Keep tabs on the same browser in step; this is not cross-device/server sync.
+window.addEventListener('storage',function(ev){if(!EDIT||ev.key!==LS_KEY)return;var s=lsGet(LS_KEY,null);if(s&&s.v===1&&s.edits){store=s;rerender()}});
 function emptyBase(k){return {k:k,status:''}}
 function baseOf(k){return baseByK[k]||emptyBase(k)}
 function eff(base,e){var r={};for(var x in base)r[x]=base[x];if(r.serial==null)r.serial='';r.note='';
@@ -3191,7 +3193,7 @@ function allRows(){var out=BASE.map(function(b){return eff(b,EDIT?store.edits[b.
 function rowByK(k){var b=baseByK[k],e=store.edits[k];if(!b&&!(e&&e.isNew))return null;return eff(b||emptyBase(k),e)}
 function editCount(){return Object.keys(store.edits).length}
 // ---------- photos (IndexedDB, same DB/format as the previous version) ----------
-var MAXPH=6,PH={},PHT={},phDB=null,phBusy=0;
+var DBPH={},MAXPH=6,PH={},PHT={},phDB=null,phBusy=0;
 function idb(){return new Promise(function(res,rej){if(phDB)return res(phDB);if(!window.indexedDB)return rej(new Error('เบราว์เซอร์นี้ไม่รองรับ IndexedDB'));var q;try{q=indexedDB.open('ruAssetView.photos',1)}catch(e){return rej(e)}
  q.onupgradeneeded=function(){q.result.createObjectStore('photos',{keyPath:'k'})};q.onsuccess=function(){phDB=q.result;res(phDB)};q.onerror=function(){rej(q.error||new Error('IndexedDB'))}})}
 function phPut(k){var list=PH[k]||[];return idb().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('photos','readwrite');var os=tx.objectStore('photos');if(list.length)os.put({k:k,list:list,t:PHT[k]||''});else os.delete(k);tx.oncomplete=function(){res()};tx.onerror=tx.onabort=function(){rej(tx.error)}})}).catch(function(e){toast('บันทึกรูปไม่ได้: '+(e&&e.message||e))})}
@@ -3210,7 +3212,11 @@ function btn(cls,text,fn){var b=el('button',cls,text);b.type='button';if(fn)b.on
 function link(cls,text,href){var a=el('a',cls,text);a.href=href;return a}
 var CAM='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 function sitePhoto(k){var P=CFG.photos||{};var o=P[k];if(!o)return null;var S=CFG.sitePhotos||{};return {src:S.dir+'/'+o.f,th:S.thumbDir+'/'+o.f,kind:o.kind,label:(S.labels||{})[o.kind]||''}}
-function photoEl(k,compact,cls){var L=PH[k];if(L&&L.length){var im=el('img','ra-photo'+(cls?' '+cls:''));im.src=L[0].th||L[0].d;im.alt='';im.loading='lazy';return im}
+function photoEl(k,compact,cls){
+ var master=DBPH[k];
+ if(master&&master.removed){var d=el('div','ra-photo ra-photo-empty'+(compact?' compact':'')+(cls?' '+cls:''));d.innerHTML=CAM+'<span>ไม่มีรูป</span>';return d}
+ if(master&&master.thumb){var v=el('img','ra-photo'+(cls?' '+cls:''));v.src=master.thumb;v.alt='';v.loading='lazy';return v}
+ var L=PH[k];if(L&&L.length){var im=el('img','ra-photo'+(cls?' '+cls:''));im.src=L[0].th||L[0].d;im.alt='';im.loading='lazy';return im}
  var sp=sitePhoto(k);if(sp){var im2=el('img','ra-photo ra-site-photo'+(cls?' '+cls:''));im2.src=compact?sp.th:sp.src;im2.alt='';im2.loading='lazy';im2.decoding='async';im2.dataset.site=sp.kind;return im2}
  var d=el('div','ra-photo ra-photo-empty'+(compact?' compact':'')+(cls?' '+cls:''));d.setAttribute('aria-label','ไม่มีรูป');d.innerHTML=CAM+'<span>ไม่มีรูป</span>';return d}
 function stTone(s){if(!s)return 'muted';if(CFG.status.good.indexOf(s)>=0)return 'good';if(CFG.status.muted.indexOf(s)>=0)return 'muted';return 'bad'}
@@ -3472,7 +3478,31 @@ function importDoc(doc){if(!doc||doc.format!=='ru-asset-edits'||!Array.isArray(d
   var old=store.edits[k];if(old&&old.t&&e.t&&old.t>e.t){skip++;return}if(old)upd++;else add++;store.edits[k]=e});
  save();Promise.all(jobs).then(function(){rerender();alert('นำเข้าแล้ว: ใหม่ '+add+' · ทับของเดิม '+upd+' · ข้าม (ในเครื่องใหม่กว่า) '+skip+(unk?' · ไม่พบ key '+unk:'')+(nph?' · รูป '+nph+' รายการ':''))})}
 if(EDIT){$('fimp').onchange=function(){var file=this.files&&this.files[0];if(!file)return;var rd=new FileReader();rd.onload=function(){try{importDoc(JSON.parse(String(rd.result).replace(/^\uFEFF/,'')))}catch(e){alert('อ่านไฟล์ไม่ได้: '+e.message)}};rd.readAsText(file,'utf-8')}}
+window.RUAssetPage={apply:function(assets){
+ var next=[],newByK={};
+ assets.forEach(function(a){
+  var k=String(a.key||''), old=baseByK[k]||{k:k};
+  var r=Object.assign({},old);
+  r.k=k;
+  if(a.asset_name)r.name=a.asset_name;
+  if(a.asset_no!==undefined)r.tag=a.asset_no;
+  if(a.asset_no_alt!==undefined)r.tag2=a.asset_no_alt;
+  if(a.serial_no!==undefined)r.serial=a.serial_no;
+  if(a.location!==undefined)r.loc=a.location;
+  if(a.acquired_date_be)r.date=a.acquired_date_be;
+  if(a.fiscal_year)r.fy=a.fiscal_year;
+  if(a.category&&!old.type)r.type=a.category;
+  if(a.status&&!old.status)r.status=a.status;
+  if(a.barcode)r.b=a.barcode;
+  if(a.ru_photo_removed==='1')DBPH[k]={removed:true};
+  else if(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(a.ru_photo_thumb||''))DBPH[k]={thumb:a.ru_photo_thumb};
+  else delete DBPH[k];
+  next.push(r);newByK[k]=r;
+ });
+ BASE=next;baseByK=newByK;
+ rerender();
+}};
 render();
 phLoad().then(function(){if(photoKeys().length)rerender()});
 })();
-</script></body></html>
+</script><script src="asset-hub.js"></script></body></html>
