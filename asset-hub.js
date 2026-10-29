@@ -1,11 +1,12 @@
 (function(){
 'use strict';
 const CFGKEY='ru_supabase_config_v1',SESSKEY='ru_supabase_session_v1',CACHE='ru_supabase_verified_cache_v1';
-const H={};let cfg={},session=null,assets=[],busy=false;
-try{cfg=JSON.parse(localStorage.getItem(CFGKEY)||'{}');session=JSON.parse(localStorage.getItem(SESSKEY)||'null')}catch(e){}
+const DEFAULT={url:'https://rxulhozzrmylcejnrdcm.supabase.co',anonKey:'sb_publishable_lpeG5taNXbOUVQH4x8ZgwA_5K5ceLNS'};
+let cfg={...DEFAULT},session=null,assets=[],busy=false;
+try{cfg={...DEFAULT,...JSON.parse(localStorage.getItem(CFGKEY)||'{}')};session=JSON.parse(localStorage.getItem(SESSKEY)||'null')}catch(e){}
 const hook=window.RUAssetPage;
 const bar=document.createElement('section');bar.id='ru-supabase-bar';bar.style.cssText='max-width:1100px;margin:12px auto;padding:12px;border:2px solid #9d86d6;border-radius:12px;background:#f8f4ff;color:#31264b;font:14px system-ui';
-bar.innerHTML='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="flex:1">RU Asset View · Supabase</b><span id="ru-sb-status">ยังไม่ได้เชื่อมฐานข้อมูล</span><button id="ru-sb-connect">เชื่อมต่อ / เข้าสู่ระบบ</button><button id="ru-sb-refresh">โหลดฐานข้อมูลกลาง</button><button id="ru-sb-create">เพิ่มครุภัณฑ์</button><button id="ru-sb-delete">ลบรายการ</button><button id="ru-sb-photo">อัปโหลดรูป</button><a href="edit.html">แก้ไขข้อมูล</a></div><div id="ru-sb-panel" style="display:none;margin-top:12px"><label>Supabase project URL <input id="ru-sb-url" style="width:85%" placeholder="https://your-project.supabase.co"></label><label>Publishable / anon key <input id="ru-sb-key" style="width:85%" type="password"></label><label>อีเมล <input id="ru-sb-email" type="email"></label><label>รหัสผ่าน <input id="ru-sb-pass" type="password"></label><button id="ru-sb-login">บันทึกและเข้าสู่ระบบ</button><button id="ru-sb-logout">ออกจากระบบ</button><p>ห้ามกรอก service_role หรือ secret key ในเว็บเด็ดขาด</p></div>';
+bar.innerHTML='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="flex:1">RU Asset View · Supabase</b><span id="ru-sb-status">ยังไม่ได้เชื่อมฐานข้อมูล</span><button id="ru-sb-connect">เชื่อมต่อ / เข้าสู่ระบบ</button><button id="ru-sb-refresh">โหลดฐานข้อมูลกลาง</button><button id="ru-sb-create">เพิ่มครุภัณฑ์</button><button id="ru-sb-delete">ลบรายการ</button><button id="ru-sb-photo">อัปโหลดรูป</button><a href="edit.html">แก้ไขข้อมูล</a></div><div id="ru-sb-panel" style="display:none;margin-top:12px"><label>Supabase project URL <input id="ru-sb-url" style="width:85%" placeholder="https://your-project.supabase.co"></label><label>Publishable / anon key <input id="ru-sb-key" style="width:85%" type="password"></label><label>อีเมล <input id="ru-sb-email" type="email"></label><label>รหัสผ่าน <input id="ru-sb-pass" type="password"></label><button id="ru-sb-login">เข้าสู่ระบบ</button><button id="ru-sb-logout">ออกจากระบบ</button><p>ห้ามกรอก service_role หรือ secret key ในเว็บเด็ดขาด</p></div>';
 const anchor=document.querySelector('.wrap')||document.querySelector('main')||document.body.firstElementChild;
 if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(bar,anchor);else document.body.prepend(bar);
 const el=id=>bar.querySelector('#'+id),status=(msg,bad=false)=>{el('ru-sb-status').textContent=msg;el('ru-sb-status').style.color=bad?'#a21d32':'#27633a'};
@@ -138,6 +139,7 @@ async function uploadFromBar(){
 function run(fn){return async()=>{try{await fn()}catch(e){status('❌ '+e.message,true)}}}
 el('ru-sb-connect').onclick=()=>{el('ru-sb-panel').style.display=el('ru-sb-panel').style.display==='none'?'block':'none';el('ru-sb-url').value=cfg.url||'';el('ru-sb-key').value=cfg.anonKey||''};
 el('ru-sb-login').onclick=run(login);
+
 el('ru-sb-logout').onclick=()=>{session=null;localStorage.removeItem(SESSKEY);status('ออกจากระบบแล้ว')};
 el('ru-sb-refresh').onclick=run(refresh);
 el('ru-sb-create').onclick=run(createAsset);
