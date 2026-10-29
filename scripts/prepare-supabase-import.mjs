@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const root=path.resolve(import.meta.dirname,'..');
+const html=fs.readFileSync(path.join(root,'assign.html'),'utf8');
+const marker='const DATA=';
+const start=html.indexOf(marker);
+if(start<0)throw Error('DATA is missing from existing assign.html');
+const end=html.indexOf(';',start);
+if(end<0)throw Error('Malformed DATA section');
+const doc=JSON.parse(html.slice(start+marker.length,end));
+if(!Array.isArray(doc.items)||doc.items.length<100)throw Error('Unexpected asset count');
+const seen=new Set();
+const rows=doc.items.map(item=>{
+ if(!/^r\d+$/.test(item.k)||seen.has(item.k))throw Error('Invalid or duplicated key '+item.k);
+ seen.add(item.k);
+ return {key:item.k,asset_name:item.n||'',asset_no:item.no||'',category:item.c||'',location:item.loc||'',fiscal_year:String(item.y||'')};
+});
+const out=path.resolve(process.env.USERPROFILE||process.env.HOME||root,'ru-asset-supabase-import-local.json');
+fs.writeFileSync(out,JSON.stringify(rows,null,2),'utf8');
+console.log(JSON.stringify({rows:rows.length,uniqueKeys:seen.size,output:out,first:rows[0].key,last:rows.at(-1).key},null,2));
