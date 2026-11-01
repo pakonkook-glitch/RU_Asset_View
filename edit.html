@@ -3164,7 +3164,10 @@ var qrcode = function() {
 var CFG=JSON.parse(document.getElementById('cfg').textContent);
 var BASE=JSON.parse(document.getElementById('data').textContent);
 var EDIT=!!CFG.edit;
-var FIELDS=CFG.fields, FBY={};FIELDS.forEach(function(f){FBY[f.key]=f});
+var FIELDS=CFG.fields, FBY={};
+// Admin-only inventory view: display the assignee stored in Supabase, not a local holder list.
+if(EDIT)FIELDS.push({key:'assignee',label:'ผู้ใช้/ผู้รับผิดชอบ',type:'text',readOnly:true,show:['table','grid','item','search','csv']});
+FIELDS.forEach(function(f){FBY[f.key]=f});
 function fieldsFor(p){return FIELDS.filter(function(f){return f.show.indexOf(p)>=0})}
 function labelOf(k){return FBY[k]?FBY[k].label:k}
 var EDITABLE=FIELDS.filter(function(f){return f.type!=='image'&&!f.readOnly&&f.key!=='serial'&&f.key!=='note'}).map(function(f){return f.key});
@@ -3274,7 +3277,7 @@ window.addEventListener('hashchange',render);
 function renderList(main){
  var all=allRows();
  var hero=el('section','panel ra-hero');var ht=el('div','ra-hero-text');var h2=el('h2',null,CFG.appTitle+' ');h2.appendChild(el('small',null,CFG.appSubtitle));ht.appendChild(h2);
- ht.appendChild(el('p','muted','ทั้งหมด '+all.length.toLocaleString('th-TH')+' รายการ · ข้อมูล ณ '+CFG.asOf+' น.'+(CFG.uaAt?' · สถานะมีผู้ใช้ ณ '+CFG.uaAt+' น.':'')+' · ไม่แสดงชื่อผู้ใช้งานและข้อมูลราคา'));hero.appendChild(ht);
+ ht.appendChild(el('p','muted','ทั้งหมด '+all.length.toLocaleString('th-TH')+' รายการ · ข้อมูล ณ '+CFG.asOf+' น.'+(CFG.uaAt?' · สถานะมีผู้ใช้ ณ '+CFG.uaAt+' น.':'')+' · แสดงผู้รับผิดชอบจากฐานกลาง · ไม่แสดงข้อมูลราคา'));hero.appendChild(ht);
  var ha=el('div','ra-hero-actions');
  if(canEdit())ha.appendChild(link('ra-btn primary big','+ เพิ่มครุภัณฑ์ใหม่','#/new'));
  ha.appendChild(link('ra-btn big','🏷️ พิมพ์สติกเกอร์','#/stickers'));
@@ -3375,7 +3378,7 @@ function renderItem(main,k){var r=rowByK(k);var p=el('section','panel ra-form-pa
  var cl=el('div','ra-card-statusline');cl.appendChild(chip(stTone(r.status),r.status||'ไม่ระบุ'));var bd=editBadges(r);if(bd)cl.appendChild(bd);right.appendChild(cl);
  var dl=el('dl','ra-detail');fieldsFor('item').filter(function(f){return f.type!=='image'&&f.key!=='name'}).forEach(function(f){var v=sv(r,f.key);if(!v&&['tag2','serial','srange','specs','qty'].indexOf(f.key)>=0)return;var d=el('div');d.appendChild(el('dt',null,f.label));var dd=el('dd',f.mono?'ra-code':'',v||'—');if(f.type==='textarea')dd.style.whiteSpace='pre-wrap';d.appendChild(dd);dl.appendChild(d)});
  var du=el('div');du.appendChild(el('dt',null,CFG.unit.label));du.appendChild(el('dd','ra-code',r._unit||'—'));dl.appendChild(du);right.appendChild(dl);
- right.appendChild(el('p','ra-hint','หน้าดูอย่างเดียว · ข้อมูล ณ '+CFG.asOf+' น.'+(CFG.uaAt?' · สถานะมีผู้ใช้ ณ '+CFG.uaAt+' น.':'')+' · ไม่แสดงชื่อผู้ใช้งานและข้อมูลราคา'));g.appendChild(right);p.appendChild(g);main.appendChild(p);document.title=(r.tag||r.name||'ครุภัณฑ์')+' · '+CFG.appTitle}
+ right.appendChild(el('p','ra-hint','หน้าดูอย่างเดียว · ข้อมูล ณ '+CFG.asOf+' น.'+(CFG.uaAt?' · สถานะมีผู้ใช้ ณ '+CFG.uaAt+' น.':'')+' · แสดงผู้รับผิดชอบจากฐานกลาง · ไม่แสดงข้อมูลราคา'));g.appendChild(right);p.appendChild(g);main.appendChild(p);document.title=(r.tag||r.name||'ครุภัณฑ์')+' · '+CFG.appTitle}
 // ---------- FORM (add / edit) ----------
 var fPh=null;
 function renderForm(main,k){if(!canEdit()){location.hash='#/';return} window.RUAssetHub.openEditor(k?'edit':'create',k);history.replaceState(null,'','#/');}
@@ -3456,6 +3459,7 @@ window.RUAssetPage={clearPrivate:function(){BASE=[];baseByK={};DBPH={};PH={};rer
   if(a.location!==undefined)r.loc=a.location;
   if(a.acquired_date_be!==undefined)r.date=a.acquired_date_be;
   if(a.fiscal_year!==undefined)r.fy=a.fiscal_year;
+  if(a.assignee!==undefined){r.assignee=String(a.assignee||'');r.ua=r.assignee?0:1;}
   if(a.category!==undefined)r.type=String(a.category||'');
   if(a.status!==undefined)r.status=String(a.status||'');
   if(a.barcode!==undefined)r.b=a.barcode;
