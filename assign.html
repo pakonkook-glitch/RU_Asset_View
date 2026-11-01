@@ -162,7 +162,7 @@ addEventListener('focus',()=>{if(on())kick()});addEventListener('online',()=>{if
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const nk=s=>{const m=/^(.*?) \((.*)\)$/.exec(s||'');return m?m[1]:(s||'')},fl=s=>{const m=/^(.*?) \((.*)\)$/.exec(s||'');return m?m[2]:''};
 const known=s=>ST.has(s)||XS.includes(s);const lab=s=>known(s)?nk(s):'❓ ชื่อไม่อยู่ในรายชื่อ ('+s+')';
-const holder=i=>A[i.k]?A[i.k].who:i.h, free=i=>!holder(i);
+const holder=i=>A[i.k]?A[i.k].who:(DELA[i.k]?'':i.h), free=i=>!holder(i);
 const who=document.getElementById('who');
 function fill(){who.innerHTML='<option value="">— เลือก —</option>'+[...DATA.staff,...XS.map(x=>x)].map(s=>`<option value="${esc(s)}" ${s===cur?'selected':''}>${esc(fl(s)?nk(s)+' — '+fl(s):s)}</option>`).join('')}
 function addn(){const v=document.getElementById('nn').value.trim();if(v&&!XS.includes(v)&&!DATA.staff.includes(v)){XS.push(v);lsSet('ru_staff_extra_pub',JSON.stringify(XS))}if(v){cur=v;fill();draw()}}
@@ -178,7 +178,7 @@ function draw(){{const g=document.getElementById('gq');if(g&&g.value.trim())setT
  const nfo=DATA.items.filter(i=>i.c==='other'&&free(i)).length,nmo=cur?DATA.items.filter(i=>i.c==='other'&&holder(i)===cur).length:0;
  document.getElementById('ob').textContent=`📦 อื่น ๆ (กล้อง แอร์ ฯลฯ) · ว่าง ${nfo}`+(nmo?` · มี ${nmo}`:'');
  const my=DATA.items.filter(i=>cur&&holder(i)===cur);document.getElementById('cnt').textContent=my.length;drawSum();
- document.getElementById('mine').innerHTML=my.length?my.map(i=>row(i,A[i.k]?`<button class="btn rm" onclick="un('${i.k}',this)">↩️ คืน</button>`:'<span class="chip">เดิมใน DB</span>')) .join(''):'<div class="note">ยังไม่มีของเลย เปิดประตูเลือกได้เลย 🚪</div>'}
+ document.getElementById('mine').innerHTML=my.length?my.map(i=>row(i,holder(i)?`<button class="btn rm" onclick="un('${i.k}',this)">↩️ เอาออกจากคนนี้</button>`:'<span class="chip">เดิมใน DB</span>')) .join(''):'<div class="note">ยังไม่มีของเลย เปิดประตูเลือกได้เลย 🚪</div>'}
  function row(i,act,extra=''){const src=i.db_removed?'':i.db_thumb|| (i.ph?'images/th/'+i.ph:'');
  const ph=src?`<img loading="lazy" src="${src}" onclick="event.stopPropagation();lbOpen('${i.k}')" onerror="this.outerHTML='<div class=ph>📷</div>'">`:'<div class="ph">📷</div>';
  const h=holder(i),user=h?`<div class="user-field">👤 ผู้ใช้: <b>${esc(lab(h))}</b>${A[i.k]?'':' <span class="chip">เดิมในฐานข้อมูล</span>'}</div>`:'<div class="user-field unassigned">👤 ผู้ใช้: <b>ยังไม่จัดสรร</b></div>';
