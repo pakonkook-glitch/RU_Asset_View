@@ -39,6 +39,7 @@ select,input{width:100%;padding:12px;border-radius:14px;border:2px solid var(--p
 .qx{flex:none;width:44px;height:44px;border-radius:12px;border:none;background:var(--pu);font-size:1.1rem;cursor:pointer;color:var(--ink)}.qx[hidden]{display:none}
 .qn{font-size:.75rem;color:var(--mut);margin:2px 4px 4px;min-height:1em}.qn b{color:var(--ink)}
 .gs .row .t small{display:block}.gs .who{font-size:.72rem;margin-top:2px}.gs .who.free{color:#2a8a4a}.gs .who.held{color:#b0487a}
+.user-field{font-size:.75rem;margin-top:3px;color:#6f5c7d}.user-field b{color:var(--ink)}.user-field.unassigned{color:#2a8a4a}
 mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 .note{font-size:.75rem;color:var(--mut);text-align:center;margin:8px}
 .fly{position:fixed;z-index:20;font-size:1.6rem;pointer-events:none;transition:all .7s cubic-bezier(.5,-0.4,.5,1.3)}
@@ -59,7 +60,7 @@ mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 <div id="sync" style="padding:8px 10px;border-radius:12px;margin:6px 0;font-size:.85rem;background:#eee"><span>☁️</span> <button class="btn gh" onclick="cfgOpen()">⚙️ ตั้งค่าออนไลน์</button> <button class="btn gh" onclick="cfgLink()">🔗 ลิงก์ให้น้อง</button> <button class="btn gh" id="readOnlySyncBtn" onclick="readOnlySync()">📥 อ่านข้อมูลออนไลน์ (ไม่ส่งข้อมูล)</button> <button class="btn gh" onclick="batchApplyNumbers()">🔄 อัปเดตลง DB</button></div>
 <div id="cf" class="card" style="display:none;background:#fff3c4"></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0;font-size:.85rem"><span id="sst">💾</span><button class="btn gh" onclick="expj()">💾 ดาวน์โหลดสำรอง (JSON)</button><button class="btn gh" onclick="restoreLast()">↩️ กู้คืนข้อมูลล่าสุด</button></div>
-<label>👤 เลือกชื่อพนักงาน</label><select id="who"></select>
+<label>👤 ผู้ใช้/ผู้รับผิดชอบ (เฉพาะ Admin/Assign)</label><select id="who" aria-label="ผู้ใช้หรือผู้รับผิดชอบ"></select><div class="note" style="text-align:left;margin:4px 0 0">ชื่อผู้ใช้จะแสดงเฉพาะหน้านี้และใช้สำหรับจัดสรรครุภัณฑ์</div>
 <div style="display:flex;gap:6px;margin-top:6px"><input id="nn" placeholder="➕ เพิ่มชื่อใหม่"><button class="btn gh" onclick="addn()">เพิ่ม</button></div>
 <button class="back" id="chg" onclick="changePerson()" style="display:none;margin-top:8px">← กลับไปเลือกรายชื่อ</button><div class="hub" id="hub"><div class="me" id="me"><div class="ava">🧸</div><div id="cname">เลือกชื่อก่อนนะ</div></div></div>
 <button class="btn otherbtn" id="ob" onclick="openDoor(OTHER)">📦 อื่น ๆ (กล้อง แอร์ ฯลฯ)</button>
@@ -173,9 +174,10 @@ function draw(){{const g=document.getElementById('gq');if(g&&g.value.trim())setT
  document.getElementById('ob').textContent=`📦 อื่น ๆ (กล้อง แอร์ ฯลฯ) · ว่าง ${nfo}`+(nmo?` · มี ${nmo}`:'');
  const my=DATA.items.filter(i=>cur&&holder(i)===cur);document.getElementById('cnt').textContent=my.length;drawSum();
  document.getElementById('mine').innerHTML=my.length?my.map(i=>row(i,A[i.k]?`<button class="btn rm" onclick="un('${i.k}',this)">↩️ คืน</button>`:'<span class="chip">เดิมใน DB</span>')) .join(''):'<div class="note">ยังไม่มีของเลย เปิดประตูเลือกได้เลย 🚪</div>'}
-function row(i,act,extra=''){const src=i.db_removed?'':i.db_thumb|| (i.ph?'images/th/'+i.ph:'');
+ function row(i,act,extra=''){const src=i.db_removed?'':i.db_thumb|| (i.ph?'images/th/'+i.ph:'');
  const ph=src?`<img loading="lazy" src="${src}" onclick="event.stopPropagation();lbOpen('${i.k}')" onerror="this.outerHTML='<div class=ph>📷</div>'">`:'<div class="ph">📷</div>';
- return `<div class="row" data-k="${i.k}">${ph}<div class="t">${i.n} ${extra}<small>${i.no}${i.loc?' · '+i.loc:''}</small>${i.y?`<span class="yr">ปี ${i.y}</span>`:'<span class="yr no">ไม่ระบุปี</span>'}${neBadge(i.k)}${peBadge(i.k)}</div><div class="acts">${act}<button class="btn gh ne" onclick="event.stopPropagation();neEdit('${i.k}')">✏️ แก้เลข</button><button class="btn gh pe" onclick="event.stopPropagation();peOpen('${i.k}')">📷 แก้รูป</button></div></div>`}
+ const h=holder(i),user=h?`<div class="user-field">👤 ผู้ใช้: <b>${esc(lab(h))}</b>${A[i.k]?'':' <span class="chip">เดิมในฐานข้อมูล</span>'}</div>`:'<div class="user-field unassigned">👤 ผู้ใช้: <b>ยังไม่จัดสรร</b></div>';
+ return `<div class="row" data-k="${i.k}">${ph}<div class="t">${i.n} ${extra}<small>${i.no}${i.loc?' · '+i.loc:''}</small>${user}${i.y?`<span class="yr">ปี ${i.y}</span>`:'<span class="yr no">ไม่ระบุปี</span>'}${neBadge(i.k)}${peBadge(i.k)}</div><div class="acts">${act}<button class="btn gh ne" onclick="event.stopPropagation();neEdit('${i.k}')">✏️ แก้เลข</button><button class="btn gh pe" onclick="event.stopPropagation();peOpen('${i.k}')">📷 แก้รูป</button></div></div>`}
 const NEK='ru_numedit_pub_v1',DNK='ru_numedit_pub_del_v1';let NE=(()=>{const o=pj(NEK,{}),r={};for(const k in o){const v=o[k];if(v&&v.new)r[k]=Object.assign({key:k},v)}return r})();let DELN=pj(DNK,{});const nesv=()=>{const ok=lsSet(NEK,JSON.stringify(NE))&lsSet(DNK,JSON.stringify(DELN));snap();stat();return !!ok};
 const IM=Object.fromEntries(DATA.items.map(i=>[i.k,i]));
 function neDups(k,v){const t=v.trim(),o=[];DATA.items.forEach(i=>{if(i.k!==k&&String(i.no||'').trim()===t)o.push('เลขเดิมของ '+i.k)});Object.entries(NE).forEach(([kk,p])=>{if(kk!==k&&String(p.new).trim()===t)o.push('ข้อเสนอของ '+kk)});return o}
@@ -316,7 +318,7 @@ addEventListener('popstate',()=>{if(document.getElementById('lb').classList.cont
 /* ===== ค้นหา (search) ===== */
 const QN=s=>String(s==null?'':s).normalize('NFC').toLowerCase().replace(/[\u200b-\u200d\ufeff]/g,'');
 const QC=s=>QN(s).replace(/[\s\-–—_.,/\\()\[\]:;'"`#*+]+/g,'');
-const QH=new Map();function qhay(i){let h=QH.get(i.k);if(!h){const t=[i.n,i.no,i.loc,i.y?('ปี '+i.y+' '+i.y+' '+(i.y-543)):''].join(' | ');h=[QN(t),QC(t),String(i.no||'').replace(/\D+/g,'')];QH.set(i.k,h)}return h}
+const QH=new Map();function qhay(i){let h=QH.get(i.k);if(!h){const t=[i.n,i.no,i.loc,i.y?('ปี '+i.y+' '+i.y+' '+(i.y-543)):'',holder(i)?('ผู้ใช้ '+lab(holder(i))):''].join(' | ');h=[QN(t),QC(t),String(i.no||'').replace(/\D+/g,'')];QH.set(i.k,h)}return h}
 function qtoks(q){return QN(q).split(/\s+/).filter(Boolean).map(t=>[t,QC(t)])}
 function qmatch(i,T){if(!T.length)return true;const [a,b,d]=qhay(i);return T.every(([t,c])=>a.includes(t)||(c&&b.includes(c))||(/^\d{3,}$/.test(c)&&d.includes(c)))}
 function qesc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
@@ -329,9 +331,9 @@ function gsearch(){const el=document.getElementById('gq'),q=el.value.trim(),T=qt
  if(!T.length){out.innerHTML='';n.textContent='';return}
  const L=DATA.items.filter(i=>qmatch(i,T)),MAX=40;
  n.innerHTML=L.length?`พบ <b>${L.length}</b> รายการ`+(L.length>MAX?` (แสดง ${MAX} แรก — พิมพ์เพิ่มเพื่อกรอง)`:'')+' · เรียงตามปี':'';
- out.innerHTML=L.length?L.slice(0,MAX).map(i=>{const c=catOf(i.c),h=holder(i);const st=h?`<div class="who held">👤 ถือโดย ${esc(lab(h))}${A[i.k]?'':' (เดิมใน DB)'}</div>`:'<div class="who free">🟢 ยังว่าง</div>';
+ out.innerHTML=L.length?L.slice(0,MAX).map(i=>{const c=catOf(i.c),h=holder(i);
   const act=h?(h===cur?'<span class="chip">ของคนนี้</span>':''):`<button class="btn add" onclick="gopen('${i.k}')">${c.e} ไปเลือก</button>`;
-  return row(i,act,`<span class="chip">${c.e} ${esc(c.t)}</span>`).replace('</small>','</small>'+st)}).join(''):`<div class="note">ไม่พบ “${qesc(q)}” 🙈 ลองพิมพ์สั้นลง หรือเลขบางส่วน เช่น 65014</div>`}
+  return row(i,act,`<span class="chip">${c.e} ${esc(c.t)}</span>`)}).join(''):`<div class="note">ไม่พบ “${qesc(q)}” 🙈 ลองพิมพ์สั้นลง หรือเลขบางส่วน เช่น 65014</div>`}
 function gopen(k){const i=DATA.items.find(x=>x.k===k);if(!i)return;if(!cur){alert('เลือกชื่อพนักงานก่อนนะคะ 😊');document.getElementById('who').focus();return}document.getElementById('gq').blur();openDoor(catOf(i.c),i.no||i.n)}
 function list(){const q=document.getElementById('q').value.trim(),T=qtoks(q);document.getElementById('qx').hidden=!q;const ALL=DATA.items.filter(i=>i.c===door.id&&free(i));const L=T.length?ALL.filter(i=>qmatch(i,T)):ALL;
  {const n=document.getElementById('qn');if(!T.length)n.innerHTML=`ว่าง <b>${ALL.length}</b> รายการ · เรียงตามปี`;else if(L.length)n.innerHTML=`พบ <b>${L.length}</b> จาก ${ALL.length} รายการ · เรียงตามปี`;else{const held=DATA.items.filter(i=>i.c===door.id&&!free(i)&&qmatch(i,T)).length,oth=DATA.items.filter(i=>i.c!==door.id&&qmatch(i,T)).length;n.innerHTML=`ไม่พบ “${qesc(q)}” ในของที่ยังว่าง`+(held?` · มี ${held} รายการที่มีคนถือแล้ว`:'')+(oth?` · เจอในหมวดอื่น ${oth} รายการ (ใช้ 🔎 ค้นหาทุกชนิดที่หน้าหลัก)`:'')}}
@@ -351,7 +353,7 @@ function lbZ(f){LB.s=Math.min(6,Math.max(1,LB.s*f));if(LB.s===1){LB.x=0;LB.y=0}l
  el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('wheel',e=>{e.preventDefault();lbZ(e.deltaY<0?1.2:1/1.2)},{passive:false})})})();
 function changePerson(){cur='';who.value='';draw();who.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>who.focus(),300)}
 function bulk(ev){if(!SEL.size){alert('ยังไม่ได้เลือกเลย');return}give([...SEL],ev)}
-function give(keys,ev){if(!cur||!keys.length)return;const at=new Date().toISOString();keys.forEach(k=>{A[k]={who:cur,at};delete DELA[k];qA(k)});const ok=sv();kick();
+function give(keys,ev){if(!cur||!keys.length)return;const at=new Date().toISOString();keys.forEach(k=>{A[k]={who:cur,at};delete DELA[k];qA(k)});QH.clear();const ok=sv();kick();
  toast(ok?`บันทึกแล้ว ✓ (${keys.length} รายการ → ${lab(cur)})`:'⚠️ บันทึกลงเครื่องไม่ได้ — ข้อมูลอยู่แค่หน้านี้'+(on()?' (กำลังส่งออนไลน์)':' กด “ดาวน์โหลดสำรอง” ก่อนปิด'),!ok);
  const c=door||OTHER,x=ev&&ev.clientX?ev.clientX:innerWidth/2,y=ev&&ev.clientY?ev.clientY:innerHeight/2;SEL=new Set();closeDoor(1);
  setTimeout(()=>{const me=document.getElementById('me').getBoundingClientRect();keys.slice(0,4).forEach((k,n)=>{const f=document.createElement('div');f.className='fly';f.textContent=c.e;f.style.left=x+'px';f.style.top=y+'px';document.body.appendChild(f);
