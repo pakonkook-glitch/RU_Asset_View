@@ -219,13 +219,14 @@ async function peFile(el){const f=el.files&&el.files[0];el.value='';if(!f||!PE)r
  catch(e){st.textContent='❌ '+(e.message||e)}}
 function peDel(){if(!PE)return;Object.assign(PE,{blob:null,th:'',act:'del'});document.getElementById('penew').innerHTML='🗑️';document.getElementById('pest').textContent='เสนอให้ลบรูปปัจจุบัน — กด “บันทึกรูป” เพื่ออัปเดต';document.getElementById('pesave').disabled=false}
 async function photoPutNow(k,act,p){if(!on())throw new Error('ยังไม่ได้เชื่อมต่อระบบออนไลน์');const body={action:'photoPut',key:k,act,at:p.at,no:p.no,name:p.name,th:p.th,dev:p.dev};if(act==='set'){if(!p.blob)throw new Error('ไม่พบไฟล์รูปที่เลือก');body.b64=await b64of(p.blob)}const j=await api(body);if(j.status!=='success'||j.assetId!==k||j.act!==act||(act==='set'&&!j.fileId))throw new Error('ระบบออนไลน์ไม่ยืนยันการบันทึกรูป');const check=await api({action:'getAssets'});if(!check.ok||!Array.isArray(check.assets))throw new Error('อ่านผลยืนยันรูปไม่ได้');const saved=check.assets.find(a=>a.key===k);if(!saved||(act==='set'&&(saved.ru_photo_id!==j.fileId||saved.ru_photo_removed==='1'))||(act==='del'&&saved.ru_photo_removed!=='1'))throw new Error('ระบบออนไลน์ยังไม่ยืนยันรูปนี้');const i=IM[k];if(i){i.db_removed=act==='del';i.db_thumb=act==='set'?(p.th||''):'';i.db_url=act==='set'?(saved.ru_photo_url||''):''}return j}
-async function peSave(){if(!PE||!PE.act)return;const k=PE.k,i=IM[k],act=PE.act,p={at:new Date().toISOString(),no:i.no||'',name:i.n||'',th:PE.th,blob:PE.blob};peClose();PSY.st='busy';PSY.err='';try{await photoPutNow(k,act,p);PSY.st='ok';toast(act==='del'?'✅ ลบรูปออนไลน์แล้ว':'✅ อัปโหลดรูปออนไลน์แล้ว');if(door)list();else draw()}catch(e){PSY.st='err';PSY.err=String(e.message||e);toast('❌ '+PSY.err,true)}}
+async function peSave(){if(!PE||!PE.act||PSY.st==='busy')return;const k=PE.k,i=IM[k],act=PE.act,p={at:new Date().toISOString(),no:i.no||'',name:i.n||'',th:PE.th,blob:PE.blob};PSY.st='busy';PSY.err='';const button=document.getElementById('pesave');button.disabled=true;try{await photoPutNow(k,act,p);PSY.st='ok';peClose();toast(act==='del'?'✅ ลบรูปออนไลน์แล้ว':'✅ อัปโหลดรูปออนไลน์แล้ว');if(door)list();else draw()}catch(e){PSY.st='err';PSY.err=String(e.message||e);document.getElementById('pest').textContent='ยังไม่ยืนยันการบันทึก: '+PSY.err;toast('❌ '+PSY.err,true)}finally{button.disabled=false}}
 async function peCancel(k){if(!confirm('ลบรูปนี้ออกจากระบบออนไลน์ใช่ไหม?'))return;const i=IM[k];if(!i)return;try{PSY.st='busy';await photoPutNow(k,'del',{at:new Date().toISOString(),no:i.no||'',name:i.n||'',th:''});PSY.st='ok';toast('✅ ลบรูปออนไลน์แล้ว');if(door)list();else draw()}catch(e){PSY.st='err';PSY.err=String(e.message||e);toast('❌ '+PSY.err,true)}}
 async function peView(k){const b=await pGet(k);const p=PP[k]||RP[k];const im=document.getElementById('lbi');im.onerror=null;im.src=b?URL.createObjectURL(b):(p&&p.th||'');const i=IM[k]||{};document.getElementById('lbc').textContent='ข้อเสนอรูป · '+(i.n||k)+' · '+(i.no||'');LB.s=1;LB.x=0;LB.y=0;lbApply();document.getElementById('lb').classList.add('on')}
 async function peDl(k){const b=await pGet(k);if(!b){alert('ไม่มีไฟล์รูปเต็มในเครื่องนี้');return}const i=IM[k]||{};const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=((i.no||k)+' '+(i.n||'')).replace(/[\\/:*?"<>|]+/g,' ').slice(0,120)+' (ข้อเสนอ).jpg';document.body.appendChild(a);a.click();a.remove()}
-function ppDraw(){}
+let PQ2={},psT=null;
+function ppDraw(){const e=document.getElementById('ppst');if(e)e.textContent=Object.keys(PP).length+' ร่างรูปในเครื่อง · เลือกแก้รูปแล้วกดบันทึกเพื่อส่ง Supabase'+(PSY.err?' · '+PSY.err:'')}
 let psBusy=false;
-function psKick(){clearTimeout(psT);ppDraw();if(on()&&navigator.onLine!==false&&Object.keys(PQ2).length)psT=setTimeout(photoSync,500)}
+function psKick(){clearTimeout(psT);ppDraw()} // Explicit cloud save only.
 async function photoSync(){
  if(!on()||navigator.onLine===false||psBusy)return false;
  if(!Object.keys(PQ2).length)return false;
@@ -263,9 +264,6 @@ async function photoSync(){
   PSY.st='err';PSY.err=String(e.message||e);return false;
  }finally{psBusy=false;ppDraw();if(door)list();else draw()}
 }
-{const _s0=sync;sync=async function(){await _s0();photoSync()}}
-setTimeout(function(){if(on()&&Object.keys(PQ2).length)photoSync()},1500);
-window.addEventListener('online',function(){if(on()&&Object.keys(PQ2).length)photoSync()});
 
 function openAssetEditor(){
  if(window.RUAssetHub?.openEditor){window.RUAssetHub.openEditor('edit');return}
@@ -362,11 +360,12 @@ function drawNeSum(){ppDraw();const ks=Object.keys(NE);document.getElementById('
 let BATCH_RUNNING=false;
 async function batchApplyNumbers(){
  if(BATCH_RUNNING)return;if(!on()){alert('กรุณาเข้าสู่ระบบ Supabase ก่อน');return}
- const proposals=Object.keys(NE),assignmentKeys=Object.keys(Q).filter(x=>x.startsWith('a|')).map(x=>x.slice(2));
+ commitPending();
+ const proposals=Object.keys(NE).filter(k=>Q['n|'+k]),assignmentKeys=Object.keys(Q).filter(x=>x.startsWith('a|')).map(x=>x.slice(2));
  const changes=new Map(),skipped=[],done=[],failed=[];
- for(const k of proposals){if(k==='r108'){delete NE[k];DELN[k]=new Date().toISOString();delete Q['n|'+k];skipped.push(k+': ยกเลิกข้อเสนอเดิม');continue}const p=NE[k];if(!p||!p.new){skipped.push(k+': ไม่มีเลขใหม่');continue}const conflict=neDups(k,String(p.new));if(conflict.length){skipped.push(k+': เลขซ้ำ ต้องตรวจสอบก่อน ('+conflict.join(', ')+')');continue}changes.set(k,{key:k,asset_no:String(p.new),expectedOld:String(p.old||'')})}
- for(const k of assignmentKeys){if(!/^r\d+$/.test(k))continue;const c=changes.get(k)||{key:k};c.assignee=A[k]?String(A[k].who):'';changes.set(k,c)}
- const total=changes.size+Object.keys(PP).length;if(!total){alert('ไม่มีข้อมูลรออัปเดต');return}
+ for(const k of proposals){const p=NE[k];if(!p||!p.new){skipped.push(k+': ไม่มีเลขใหม่');continue}const conflict=neDups(k,String(p.new));if(conflict.length){skipped.push(k+': เลขซ้ำ ต้องตรวจสอบก่อน ('+conflict.join(', ')+')');continue}changes.set(k,{key:k,asset_no:String(p.new),expectedOld:String(p.old||'')})}
+ for(const k of assignmentKeys){if(!/^r\d+$/.test(k))continue;const c=changes.get(k)||{key:k};c.assignee=A[k]?String(A[k].who):'';c.expectedAssignee=IM[k]?.h||'';changes.set(k,c)}
+ const total=changes.size+Object.keys(PQ2).length;if(!total){alert('ไม่มีข้อมูลรออัปเดต');return}
  if(!confirm('บันทึกข้อเสนอไปยัง RU Asset DB จำนวน '+total+' งานหรือไม่?\r\nรายการที่ไม่สำเร็จจะยังค้างไว้'))return;
  BATCH_RUNNING=true;const btn=document.getElementById('applyne');if(btn){btn.disabled=true;btn.textContent='⏳ กำลังตรวจสอบและบันทึกลง RU Asset DB'}
  try{
@@ -375,6 +374,7 @@ async function batchApplyNumbers(){
    for(const r of result.results||[]){const c=changes.get(String(r.key));if(!c){failed.push(String(r.key)+': ไม่พบงานที่ส่ง');continue}if(!r.ok){failed.push(c.key+': '+(r.error||'บันทึกไม่สำเร็จ'));continue}const saved=remote.get(c.key);const noOk=c.asset_no===undefined||String(saved&&saved.asset_no||'')===String(c.asset_no);const holderOk=c.assignee===undefined||String(saved&&saved.assignee||'')===String(c.assignee||'');if(!saved||!noOk||!holderOk){failed.push(c.key+': read-back ไม่ตรงกับค่าที่ส่ง');continue}if(c.asset_no!==undefined){delete NE[c.key];DELN[c.key]=now;delete Q['n|'+c.key]}if(c.assignee!==undefined)delete Q['a|'+c.key];done.push(c.key+': ยืนยันใน DB แล้ว')} 
   }
   for(const k of Object.keys(Q))if(k.startsWith('n|')&&!NE[k.slice(2)])delete Q[k];lsSet(QK,JSON.stringify(Q));sv();nesv();ppsv();badge();
+  if(Object.keys(PQ2).length){if(await photoSync())done.push('รูป: ยืนยันด้วย GET แล้ว');if(Object.keys(PQ2).length)failed.push('รูป: '+(PSY.err||'ยังมีรายการค้าง'));}
   if(done.length&&window.RUAssetHub)await window.RUAssetHub.refresh();
   alert('ผลอัปเดต RU Asset DB\r\n✅ สำเร็จ '+done.length+' งาน\r\n⚠️ รอตรวจ '+skipped.length+' งาน\r\n❌ ไม่สำเร็จ '+failed.length+' งาน\r\n\r\n'+[...done,...skipped,...failed].join('\r\n'));
  }catch(e){sv();nesv();alert('❌ บันทึกไม่ครบ: '+String(e.message||e)+'\r\nรายการที่ไม่สำเร็จยังค้างอยู่')}finally{BATCH_RUNNING=false;neRedraw()}
@@ -384,12 +384,14 @@ function drawSum(){drawNeSum();const g={};DATA.items.forEach(i=>{const h=holder(
  document.getElementById('sum').innerHTML=ps.length?ps.map(p=>`<div class="srow" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed #eee"><span style="flex:1">${esc(lab(p))} <span class="chip">${g[p].length}</span></span><a class="btn gh stk" target="_blank" rel="noopener" href="${stkUrl(g[p])}">🏷️ พิมพ์สติกเกอร์</a></div>`).join(''):'<div class="note">ยังไม่มีการจัดสรร</div>'}
 function exp(){const m=IM,ks=[...new Set([...Object.keys(A),...Object.keys(NE)])];dl('ru_assignments.csv','\ufeffkey,asset_no,asset_name,category,assignee,assigned_at,new_asset_no,old_asset_no,proposed_at\r\n'+ks.map(k=>{const v=A[k]||{},p=NE[k]||{};return [k,m[k]?.no,m[k]?.n,m[k]?.c,v.who,v.at,p.new,p.old,p.at].map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')}).join('\r\n'),'text/csv')}
 function expj(){dl('ru_assignments.json',JSON.stringify({format:'ru_assign_v2_cmmcyyonkpihqlfhtnzw',assign:A,numedit:NE,photo_proposals:Object.fromEntries(Object.entries(PP).map(([k,p])=>[k,Object.assign({},p,{th:undefined})]))},null,1),'application/json')}
-function csvP(t){const R=[];let r=[],f='',q=0;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=0}else f+=c}else if(c=='"')q=1;else if(c==','){r.push(f);f=''}else if(c=='\r\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\r\n')i++;r.push(f);R.push(r);r=[];f=''}else f+=c}if(f||r.length){r.push(f);R.push(r)}return R}
+function csvP(t){const R=[];let r=[],f='',q=0;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=0}else f+=c}else if(c=='"')q=1;else if(c==','){r.push(f);f=''}else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;r.push(f);R.push(r);r=[];f=''}else f+=c}if(f||r.length){r.push(f);R.push(r)}return R}
 function imp(el){const f=el.files[0];if(!f)return;f.text().then(t=>{t=t.replace(/^\ufeff/,'');let a={},n={};
  if(/\.csv$/i.test(f.name)){const R=csvP(t),h=R.shift();R.forEach(r=>{const o=Object.fromEntries(h.map((x,j)=>[x,r[j]||'']));if(!o.key)return;if(o.assignee){a[o.key]={who:o.assignee,at:o.assigned_at}}if(o.new_asset_no)n[o.key]={key:o.key,old:o.old_asset_no||(IM[o.key]||{}).no||'',new:o.new_asset_no,at:o.proposed_at}})}
  else{const j=JSON.parse(t);if(j&&j.format==='ru_assign_v2_cmmcyyonkpihqlfhtnzw'){a=j.assign||{};n=j.numedit||{}}else{a=j;n=NE}}
  A=normA(a);NE=n;Object.keys(A).forEach(qA);Object.keys(NE).forEach(qN);sv();nesv();kick();draw();alert('นำเข้าแล้ว ✨ (จัดสรร '+Object.keys(A).length+' · ข้อเสนอแก้เลข '+Object.keys(NE).length+')')})}
-window.RUAssetPage={apply:function(assets){
+let hiddenDraft=null;
+window.RUAssetPage={savePending:batchApplyNumbers,clearPrivate:function(){if(!hiddenDraft)hiddenDraft={A,NE,Q,PP,DELA,XS:[...XS]};A={};NE={};Q={};PP={};RP={};PQ2={};DELA={};cur='';SEL.clear();XS.splice(0);ST.clear();if(door)closeDoor();peClose();for(const id of ['gl','ml','nesum','pplist','cname']){const e=document.getElementById(id);if(e)e.textContent=''}},apply:function(assets){
+ if(assets.length&&hiddenDraft&&on()){({A,NE,Q,PP,DELA}=hiddenDraft);XS.push(...hiddenDraft.XS);hiddenDraft=null;}
  const previous=Object.fromEntries(DATA.items.map(i=>[i.k,i]));const next=[];
  (Array.isArray(assets)?assets:[]).forEach(function(a){
   const k=String(a.key||'');if(!/^r\d+$/.test(k))return;const old=previous[k]||{};
@@ -411,7 +413,7 @@ fill();draw();
   setTimeout(function(){if(IM[k])peOpen(k)},1100);
  }
 })();
-if(!LSOK)showBad();stat();badge();drawCF();if(!LSOK)idbGet().then(b=>{if(b&&b.A&&!Object.keys(A).length&&Object.keys(b.A).length){A=normA(b.A);NE=b.NE||{};draw();toast('ดึงข้อมูลจากสำรอง IndexedDB แล้ว')}});// no auto-sync on page load
+if(!LSOK)showBad();stat();badge();drawCF();if(false)idbGet().then(b=>{if(b&&b.A&&!Object.keys(A).length&&Object.keys(b.A).length){A=normA(b.A);NE=b.NE||{};draw();toast('ดึงข้อมูลจากสำรอง IndexedDB แล้ว')}});// no auto-sync on page load
 addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElementById('lb').classList.contains('on')){lbHide();return}if(door)closeDoor()});
 </script><div class="room" id="pe" onclick="if(event.target===this)peClose()"><div class="pesh">
 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><button class="peback" onclick="peClose()">← ปิด</button><b style="flex:1">📷 แก้รูป</b></div>
@@ -422,4 +424,4 @@ addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElement
 <div class="note">ℹ️ กดบันทึกแล้วระบบจะอัปโหลดหรือลบรูปออนไลน์ทันที</div>
 <div class="pebar" style="display:flex;gap:8px;margin-top:10px"><button class="btn gh" style="flex:1" onclick="peClose()">ยกเลิก</button><button class="btn add" id="pesave" style="flex:2" disabled onclick="peSave()">✅ บันทึกรูป</button></div>
 <div id="peold"></div></div></div>
-<div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="asset-hub.js?v=99c94c3"></script></body></html>
+<div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="asset-hub.js?v=20261102-1"></script></body></html>

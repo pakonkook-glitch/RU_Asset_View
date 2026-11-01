@@ -3189,9 +3189,8 @@ function baseOf(k){return baseByK[k]||emptyBase(k)}
 function eff(base,e){var r={};for(var x in base)r[x]=base[x];if(r.serial==null)r.serial='';r.note='';
  if(e){var f=e.f||{};for(var y in f)r[y]=f[y];if(e.serial)r.serial=e.serial;r.note=e.note||'';r._del=!!e.del;r._new=!!e.isNew;r._edited=true}
  r.fy=fyOf(r.date)||((e&&e.f&&('date' in e.f))?'':(base.fy||''));r._unit=unitOf(r);r._ph=PH[r.k]&&PH[r.k].length?1:0;return r}
-function allRows(){var out=BASE.map(function(b){return eff(b,EDIT?store.edits[b.k]:null)});
- if(EDIT)Object.keys(store.edits).forEach(function(k){var e=store.edits[k];if(e.isNew&&!baseByK[k])out.push(eff(emptyBase(k),e))});return out}
-function rowByK(k){var b=baseByK[k],e=store.edits[k];if(!b&&!(e&&e.isNew))return null;return eff(b||emptyBase(k),e)}
+function allRows(){return BASE.map(function(b){return eff(b,null)})}
+function rowByK(k){return baseByK[k]?eff(baseByK[k],null):null}
 function editCount(){return Object.keys(store.edits).length}
 // ---------- photos (IndexedDB, same DB/format as the previous version) ----------
 var DBPH={},MAXPH=6,PH={},PHT={},phDB=null,phBusy=0;
@@ -3255,7 +3254,7 @@ function cmp(a,b){if(sortKey==='_ord')return (ordOf(a)-ordOf(b))*sortDir||thCmp(
  if(x==='')return 1;if(y==='')return -1;return thCmp(x,y)*sortDir||thCmp(sv(a,'tag'),sv(b,'tag'))}
 // ---------- edit mode ----------
 var editOn=EDIT&&lsGet(LS_MODE,true)!==false;
-function canEdit(){return EDIT&&editOn}
+function canEdit(){return EDIT&&editOn&&!!window.RUAssetHub?.connected()}
 // ---------- router ----------
 var view=lsGet(LS_VIEW,'grid')==='table'?'table':'grid';
 function route(){var h=decodeURIComponent(location.hash||'');var m;
@@ -3379,61 +3378,10 @@ function renderItem(main,k){var r=rowByK(k);var p=el('section','panel ra-form-pa
  right.appendChild(el('p','ra-hint','หน้าดูอย่างเดียว · ข้อมูล ณ '+CFG.asOf+' น.'+(CFG.uaAt?' · สถานะมีผู้ใช้ ณ '+CFG.uaAt+' น.':'')+' · ไม่แสดงชื่อผู้ใช้งานและข้อมูลราคา'));g.appendChild(right);p.appendChild(g);main.appendChild(p);document.title=(r.tag||r.name||'ครุภัณฑ์')+' · '+CFG.appTitle}
 // ---------- FORM (add / edit) ----------
 var fPh=null;
-function renderForm(main,k){if(!canEdit()){location.hash='#/';return}
- var isNew=!k;if(isNew)k='n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
- var b=baseOf(k),e=store.edits[k];if(!isNew&&!baseByK[k]&&!(e&&e.isNew)){location.hash='#/';return}
- var nw=isNew||!baseByK[k];var r=eff(b,e);
- var p=el('div','panel ra-form-panel');p.id='formpage';var head=el('div','ra-form-head');head.appendChild(el('h2',null,nw?(isNew?'เพิ่มครุภัณฑ์ใหม่':'แก้ไขรายการที่เพิ่มใหม่'):'แก้ไขครุภัณฑ์ '+(b.tag||b.name||'')));head.appendChild(link('ra-btn ghost','← กลับไปรายการ','#/'));p.appendChild(head);
- if(!nw)p.appendChild(el('p','ra-hint','key: '+k+(b.b?' · B เดิม: '+b.b:'')+(b.tag?' · เลขเดิม: '+b.tag:'')));
- // photo row
- fPh=(PH[k]||[]).slice();
- if(!nw){
-  var central=el('div','panel');central.appendChild(el('h3',null,'📷 รูปครุภัณฑ์ในฐานข้อมูลกลาง'));
-  central.appendChild(el('p','ra-hint','เพิ่ม เปลี่ยน หรือลบรูปผ่านระบบออนไลน์เดียวกัน เพื่อให้ทุกหน้าและทุกเครื่องเห็นรูปตรงกัน'));
-  central.appendChild(link('ra-btn primary','📷 จัดการรูปภาพบน Supabase Storage','assign.html?photo='+encodeURIComponent(k)));
-  p.appendChild(central);
- }else{
- var pr=el('div','ra-photo-row');var dz=el('div','dropzone ra-dropzone');dz.appendChild(el('p',null,'📷 ลากวาง'+labelOf('photo')+'ที่นี่ หรือเลือกไฟล์ / ถ่ายรูป'));
- var bw=el('div','ra-hero-actions');var fi=el('input');fi.type='file';fi.accept='image/*';fi.multiple=true;fi.hidden=true;fi.id='f_photo';var fc=el('input');fc.type='file';fc.accept='image/*';fc.setAttribute('capture','environment');fc.hidden=true;
- bw.appendChild(btn('ra-btn','เลือกไฟล์รูป',function(){fi.value='';fi.click()}));bw.appendChild(btn('ra-btn','📷 ถ่ายรูป',function(){fc.value='';fc.click()}));dz.appendChild(bw);dz.appendChild(fi);dz.appendChild(fc);
- dz.appendChild(el('span','ra-hint','สูงสุด '+MAXPH+' รูป · ย่อขนาดอัตโนมัติ · เก็บในเครื่องนี้'));
- dz.ondragover=function(ev){ev.preventDefault();dz.classList.add('active')};dz.ondragleave=function(){dz.classList.remove('active')};dz.ondrop=function(ev){ev.preventDefault();dz.classList.remove('active');addFiles(ev.dataTransfer.files)};
- fi.onchange=function(){addFiles(fi.files)};fc.onchange=function(){addFiles(fc.files)};
- var pv=el('div','ra-photo-preview');pr.appendChild(dz);pr.appendChild(pv);p.appendChild(pr);
- function phRender(){pv.replaceChildren();var main1=el('div','ra-photo');main1.style.position='relative';if(fPh.length){var im=el('img','ra-photo');im.src=fPh[0].th||fPh[0].d;im.alt='';pv.appendChild(im)}else{var d=el('div','ra-photo ra-photo-empty');d.innerHTML=CAM+'<span>ไม่มีรูป</span>';d.style.width='180px';d.style.height='150px';d.style.borderRadius='12px';d.style.border='1px solid var(--border)';pv.appendChild(d)}
-  var l=el('div','ra-phlist');fPh.forEach(function(ph,i){var w=el('div','ra-phit');var im=el('img','ra-photo');im.src=ph.th||ph.d;w.appendChild(im);w.appendChild(btn('','✕',function(){fPh.splice(i,1);phRender()}));l.appendChild(w)});if(fPh.length)pv.appendChild(l);
-  pv.appendChild(el('span','ra-hint',phBusy?'กำลังย่อรูป…':fPh.length+'/'+MAXPH+' รูป'))}
- function addFiles(fl){var files=Array.prototype.slice.call(fl||[]).filter(function(f){return !f.type||f.type.indexOf('image/')===0});var room=MAXPH-fPh.length;files=files.slice(0,room);if(!files.length)return;var list=fPh;phBusy++;phRender();
-  files.reduce(function(pp,f){return pp.then(function(){return makePhoto(f).then(function(o){list.push(o)},function(er){toast(er.message)})})},Promise.resolve()).then(function(){phBusy--;if(list===fPh)phRender()})}
- phRender();
- }
- // fields
- var form=el('form');form.autocomplete='off';var grid=el('div','grid2 ra-form-grid');
- fieldsFor('form').filter(function(f){return f.type!=='image'}).forEach(function(f){var lab=el('label',f.full?'ra-full':'');var sp=el('span',null,f.label);if(f.required){var rq=el('b','ra-req',' *');sp.appendChild(rq)}lab.appendChild(sp);
-  var inp;if(f.type==='textarea'){inp=el('textarea')}else if(f.type==='select'){inp=el('select');STATUSES.forEach(function(s){var o=el('option',null,s);o.value=s;inp.appendChild(o)})}else{inp=el('input');if(f.type==='date_be')inp.inputMode='numeric'}
-  inp.id='f_'+f.key;inp.name=f.key;if(f.placeholder)inp.placeholder=f.placeholder;var v=sv(r,f.key);if(f.type==='select'){if(v&&STATUSES.indexOf(v)<0){var ox=el('option',null,v);ox.value=v;inp.appendChild(ox)}inp.value=v||STATUSES[0]}else inp.value=v;
-  if(f.suggest){var dl=el('datalist');dl.id='dl_'+f.key;var seen={};BASE.forEach(function(x){var s=sv(x,f.key);if(s&&!seen[s]){seen[s]=1;var o=el('option');o.value=s;dl.appendChild(o)}});inp.setAttribute('list',dl.id);lab.appendChild(dl)}
-  lab.appendChild(inp);if(f.hint)lab.appendChild(el('small','ra-hint',f.hint));
-  var was=el('small','ra-was');lab.appendChild(was);
-  function chk(){var bv=(f.key==='note'||f.key==='serial'&&!b.serial)?'':sv(b,f.key);if(!nw&&f.key!=='note'&&inp.value.trim()!==bv){lab.classList.add('changed');was.textContent='เดิม: '+(bv||'(ว่าง)')}else{lab.classList.remove('changed');was.textContent=''}
-   if(f.unique){var val=inp.value.replace(/\s+/g,'').toUpperCase();var d=val?allRows().filter(function(x){return x.k!==k&&sv(x,f.key).replace(/\s+/g,'').toUpperCase()===val}):[];if(d.length){was.textContent=(was.textContent?was.textContent+' · ':'')+'⚠ ซ้ำกับ '+d.slice(0,2).map(function(x){return (x.tag||x.k)+' '+(x.name||'').slice(0,24)}).join(', ')}}}
-  inp.addEventListener('input',chk);inp.addEventListener('change',chk);chk();grid.appendChild(lab)});
- form.appendChild(grid);
- var acts=el('div','ra-form-actions');var sb=el('button','ra-btn primary big',nw&&isNew?'💾 บันทึกครุภัณฑ์':'💾 บันทึกการแก้ไข');sb.type='submit';sb.id='f_save';acts.appendChild(sb);
- acts.appendChild(btn('ra-btn big','ยกเลิก',function(){location.hash='#/'}));
- if(!isNew){var dbn=btn('ra-btn danger',(e&&e.del)?'↺ ยกเลิกเครื่องหมายลบ':'🗑 ทำเครื่องหมายลบ',function(){collect(!(e&&e.del));location.hash='#/';toast('อัปเดตเครื่องหมายลบแล้ว')});dbn.id='f_del';acts.appendChild(dbn)}
- if(e)acts.appendChild(btn('ra-btn ghost',nw?'ลบรายการใหม่นี้':'คืนค่าเดิม',function(){if(!confirm('ยกเลิกการแก้ไขของรายการนี้ทั้งหมด?'))return;if(nw)setPhotos(k,[]);delete store.edits[k];save();location.hash='#/';toast('คืนค่าเดิมแล้ว')}));
- form.appendChild(acts);form.appendChild(el('p','ra-hint','บันทึกในเครื่อง/เบราว์เซอร์นี้เท่านั้น — ส่งออกไฟล์การแก้ไขจากหน้ารายการเพื่อนำไปอัปเดตฐานข้อมูล'));
- function collect(delFlag){var old=store.edits[k];var ne={f:{},serial:'',note:'',del:old?!!old.del:false,isNew:nw,t:new Date().toISOString()};if(delFlag!=null)ne.del=delFlag;
-  fieldsFor('form').forEach(function(f){if(f.type==='image')return;var inp=$('f_'+f.key);var v=inp.value;v=f.type==='textarea'?v.trim():v.replace(/\s+/g,' ').trim();if(f.mono)v=v.replace(/\s+/g,'');if(f.key==='b')v=v.toUpperCase();
-   if(f.key==='note'){ne.note=v;return}if(f.key==='serial'&&!sv(b,'serial')){ne.serial=v;return}
-   if(nw){if(v)ne.f[f.key]=v}else if(v!==sv(b,f.key))ne.f[f.key]=v});
-  var changed=nw||Object.keys(ne.f).length||ne.serial||ne.note||ne.del;if(changed)store.edits[k]=ne;else delete store.edits[k];
-  var o2=PH[k]||[];if(!(o2.length===fPh.length&&o2.every(function(x,i){return x===fPh[i]})))setPhotos(k,fPh);save()}
- form.onsubmit=function(ev){ev.preventDefault();if(phBusy){toast('กำลังย่อรูป รอสักครู่…');return}var nmv=$('f_name').value.trim();if(nw&&!nmv){toast('กรุณากรอกชื่อครุภัณฑ์');$('f_name').focus();return}collect(null);location.hash=nw?'#item='+encodeURIComponent(k):'#/';toast(nw?'เพิ่มครุภัณฑ์ในเครื่องนี้แล้ว':'บันทึกการแก้ไขในเครื่องนี้แล้ว')};
- p.appendChild(form);main.appendChild(p)}
-function quickPhoto(k,update){if(baseByK[k]){location.href='assign.html?photo='+encodeURIComponent(k);return}var fi=$('qpfile');fi.value='';fi.onchange=function(){var f=fi.files&&fi.files[0];if(!f)return;toast('กำลังย่อรูป…');makePhoto(f).then(function(o){return setPhotos(k,[o].concat((PH[k]||[]).slice(1)))}).then(function(){toast('บันทึกรูปในเครื่องนี้แล้ว');update()},function(e){toast(e.message)})};fi.click()}
-function markDelete(k){var e=store.edits[k];if(e){e.del=!e.del;e.t=new Date().toISOString();if(!e.del&&!Object.keys(e.f||{}).length&&!e.serial&&!e.note&&!e.isNew)delete store.edits[k]}else store.edits[k]={f:{},serial:'',note:'',del:true,isNew:false,t:new Date().toISOString()};save();toast(store.edits[k]&&store.edits[k].del?'ทำเครื่องหมายลบแล้ว (ยังไม่ลบจริง)':'ยกเลิกเครื่องหมายลบแล้ว')}
+function renderForm(main,k){if(!canEdit()){location.hash='#/';return} window.RUAssetHub.openEditor(k?'edit':'create',k);history.replaceState(null,'','#/');}
+
+function quickPhoto(k){window.RUAssetHub.openEditor('photo',k)}
+function markDelete(k){window.RUAssetHub.openEditor('delete',k)}
 // ---------- STICKERS ----------
 function renderStickers(main,ids){if(ids&&ids.length){sel={};ids.forEach(function(k){if(k)sel[k]=1});saveSel();history.replaceState(null,'','#/stickers')}
  var S=lsGet(LS_STK,null)||{};var D=CFG.sticker;['widthMm','heightMm','perPage','cols','fontPx'].forEach(function(k){if(!(S[k]>0))S[k]=D[k]});
@@ -3491,7 +3439,7 @@ function importDoc(doc){if(!doc||doc.format!=='ru-asset-edits'||!Array.isArray(d
   var old=store.edits[k];if(old&&old.t&&e.t&&old.t>e.t){skip++;return}if(old)upd++;else add++;store.edits[k]=e});
  save();Promise.all(jobs).then(function(){rerender();alert('นำเข้าแล้ว: ใหม่ '+add+' · ทับของเดิม '+upd+' · ข้าม (ในเครื่องใหม่กว่า) '+skip+(unk?' · ไม่พบ key '+unk:'')+(nph?' · รูป '+nph+' รายการ':''))})}
 if(EDIT){$('fimp').onchange=function(){var file=this.files&&this.files[0];if(!file)return;var rd=new FileReader();rd.onload=function(){try{importDoc(JSON.parse(String(rd.result).replace(/^\uFEFF/,'')))}catch(e){alert('อ่านไฟล์ไม่ได้: '+e.message)}};rd.readAsText(file,'utf-8')}}
-window.RUAssetPage={apply:function(assets){
+window.RUAssetPage={clearPrivate:function(){BASE=[];baseByK={};DBPH={};PH={};rerender()},apply:function(assets){
  var next=[],newByK={};
  assets.forEach(function(a){
   var k=String(a.key||''), old=baseByK[k]||{k:k};
@@ -3547,6 +3495,6 @@ window.RUAssetPage={apply:function(assets){
  save();rerender();
 }};
 render();
-phLoad().then(function(){if(photoKeys().length)rerender()});
+// Legacy IndexedDB photos never override cloud inventory.
 })();
-</script><script src="asset-hub.js?v=99c94c3"></script></body></html>
+</script><script src="asset-hub.js?v=20261102-1"></script></body></html>

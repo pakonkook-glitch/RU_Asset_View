@@ -20,6 +20,7 @@ const EXPECTED_COLUMNS=new Set([...MUTABLE_COLUMNS]);
 
 let cfg={...DEFAULT};
 let session=null;
+let authGeneration=0;
 let assets=[];
 let busy=false;
 let refreshPromise=null;
@@ -37,7 +38,7 @@ function writeStore(name,value){try{const s=store();if(s)s.setItem(name,JSON.str
 }
 function removeStore(name){try{const s=store();if(s)s.removeItem(name)}catch(_){}
 }
-try{cfg={...DEFAULT,...(readStore(CFGKEY,{})||{})};session=readStore(SESSKEY,null)}catch(_){}
+try{session=readStore(SESSKEY,null)}catch(_){}
 /* Old metadata was only a count/timestamp and must never be used as online state. */
 removeStore(LEGACY_CACHE);
 
@@ -66,12 +67,13 @@ function publicKey(){
 }
 function sessionWithExpiry(next,previous){
   const s={...(previous||{}),...(next||{})};
-  if(!s.expires_at&&s.expires_in) s.expires_at=Math.floor(Date.now()/1000)+Number(s.expires_in);
+  if(!next?.expires_at&&next?.expires_in) s.expires_at=Math.floor(Date.now()/1000)+Number(s.expires_in);
   if(s.expires_at!=null){const n=Number(s.expires_at);if(Number.isFinite(n))s.expires_at=n}
   return s;
 }
 function saveSession(next){
-  session=next?sessionWithExpiry(next,session):null;
+  if(!next||!session||next.user?.id!==session.user?.id)authGeneration++;
+  session=next?sessionWithExpiry(next,null):null;
   if(session)writeStore(SESSKEY,session);else removeStore(SESSKEY);
 }
 function sameValue(a,b){return String(a==null?'':a)===String(b==null?'':b)}
@@ -113,11 +115,13 @@ async function errorMessage(response){
 async function refreshSession(){
   if(authRefreshPromise)return authRefreshPromise;
   const previous=session;
+  const generation=authGeneration;
   if(!previous?.refresh_token){invalidateSession();throw authError()}
   authRefreshPromise=(async()=>{
     try{
       const r=await request('/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:previous.refresh_token}),authenticated:false,retry401:false});
       if(!r||!r.access_token)throw new Error('Supabase refresh token ใช้งานไม่ได้');
+      if(generation!==authGeneration)throw authError();
       saveSession(sessionWithExpiry(r,previous));
       return session;
     }catch(e){invalidateSession();throw new Error('เซสชันหมดอายุและต่ออายุไม่ได้: '+(e.message||e))}
@@ -136,6 +140,7 @@ async function request(route,options={}){
   const authenticated=options.authenticated!==false;
   const retry401=options.retry401!==false;
   if(authenticated)await ensureAuth();
+  const generation=authGeneration;
   const send=async()=>{
     const headers={apikey:publicKey(),...(options.headers||{})};
     if(authenticated){if(!session?.access_token)throw authError();headers.Authorization='Bearer '+session.access_token}
@@ -151,7 +156,9 @@ async function request(route,options={}){
     if(response.status===401&&authenticated)invalidateSession();
     throw new Error(msg);
   }
+  if(authenticated&&generation!==authGeneration)throw authError();
   const data=await decodeResponse(response);
+  if(authenticated&&(!session?.access_token||generation!==authGeneration))throw authError();
   return options.withMeta?{data,response}:data;
 }
 async function raw(route,options={}){return request(route,options)}
@@ -246,7 +253,7 @@ async function signPrivatePhotos(rows){
   for(let i=0;i<candidates.length;i+=4){
     await Promise.all(candidates.slice(i,i+4).map(async a=>{
       if(!PHOTO_PATH_RE.test(String(a.ru_photo_id||''))){a.ru_photo_url='';skipped++;return}
-      await signOnePhoto(a);
+      try{await signOnePhoto(a)}catch(_){a.ru_photo_url='';skipped++}
     }));
   }
   rows.forEach(a=>{if(a.ru_photo_removed==='1')a.ru_photo_url=''});
@@ -431,9 +438,12 @@ async function uploadFromBar(){
 }
 
 async function readAssetsForPage(){
-  const rows=!session?.access_token&&isPublicListing()
+  if(!isPublicListing())await ensureAuth();
+  const generation=authGeneration;
+  const rows=isPublicListing()
     ?await listPublicAssetRows()
     :await listAssetRows({includeDeleted:false,signPhotos:true});
+  if(!isPublicListing()&&(!session?.access_token||generation!==authGeneration))throw new Error('เซสชันเปลี่ยน กรุณาอ่านข้อมูลอีกครั้ง');
   assets=rows;
   try{hook?.apply?.(rows)}catch(e){throw new Error('RUAssetPage.apply ล้มเหลว: '+e.message)}
   return rows;
@@ -459,6 +469,7 @@ async function call(body){
     const rows=await readAssetsForPage();
     return {ok:true,assets:rows};
   }
+  if(isPublicListing())throw new Error('หน้าสาธารณะอ่านข้อมูลได้อย่างเดียว');
   if(body.action==='applyAssetFields')return editBatch(body.changes,'fields');
   if(body.action==='applyAssetChanges')return editBatch(body.changes,'changes');
   if(body.action==='updateAsset'){
@@ -509,6 +520,7 @@ function loadRecordForm(key){
   formMessage(session?.access_token?'การเปลี่ยนแปลงยังไม่บันทึก':'ยังไม่เข้าสู่ระบบ Supabase — กรอกข้อมูลได้ แต่ระบบจะไม่อ้างว่าบันทึกออนไลน์');
 }
 function openRecordDialog(mode,key){
+  if(isPublicListing()||!session?.access_token){status('กรุณาเข้าสู่ระบบในหน้าแก้ไขก่อน',true);return}
   buildRecordDialog();recordMode=mode;const create=mode==='create';
   delete formElement('ru-record-save').dataset.confirmed;formElement('ru-record-save').disabled=false;
   formElement('ru-record-title').textContent=create?'เพิ่มครุภัณฑ์':mode==='photo'?'จัดการรูปภาพ':mode==='delete'?'ลบครุภัณฑ์ (soft delete)':'แก้ไขครุภัณฑ์ / ผู้ถือครอง / สถานะ';
@@ -549,7 +561,8 @@ el('ru-sb-login').onclick=run(async()=>{
   const nextCfg={url:el('ru-sb-url').value.trim(),anonKey:el('ru-sb-key').value.trim()};
   const email=el('ru-sb-email').value.trim(),password=el('ru-sb-pass').value;
   if(!email||!password)throw new Error('กรุณากรอกอีเมลและรหัสผ่าน');
-  cfg=nextCfg;publicKey();
+  if(nextCfg.url!==DEFAULT.url||nextCfg.anonKey!==DEFAULT.anonKey)throw new Error('ใช้การเชื่อมต่อโครงการ RU Asset View ที่กำหนดไว้เท่านั้น');
+  invalidateSession();cfg=nextCfg;publicKey();
   const r=await request('/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password}),authenticated:false,retry401:false});
   if(!r?.access_token)throw new Error('Supabase login ไม่ได้ access token');
   saveSession(r);writeStore(CFGKEY,cfg);el('ru-sb-pass').value='';el('ru-sb-panel').style.display='none';
@@ -577,17 +590,24 @@ el('ru-sb-delete').onclick=()=>openRecordDialog('delete');
 el('ru-sb-photo').onclick=()=>openRecordDialog('photo');
 const send=document.createElement('button');send.textContent='ส่งการแก้ไขที่ค้างไป Supabase';send.style.cssText='margin:8px;padding:8px;background:#4f46a5;color:white;border-radius:8px';bar.append(send);
 send.onclick=run(async()=>{
+  if(send.disabled)return;
+  if(hook?.savePending){await hook.savePending();return}
   const changes=hook?.pending?.()||[];
   if(!changes.length)throw new Error('ไม่มีรายการแก้ไขที่ค้าง');
   if(!confirm('ยืนยันส่ง '+changes.length+' รายการไป Supabase?'))return;
+  send.disabled=true;
+  try{
   const result=await editBatch(changes,'fields');
   const done=result.results.filter(x=>x.ok),failed=result.results.filter(x=>!x.ok);
   if(done.length)hook?.committed?.(done,changes);
   const refreshed=await refresh();
   status((result.ok&&refreshed?'สำเร็จ':result.ok?'เขียนยืนยันแล้ว แต่ refresh ล้มเหลว':'บางรายการไม่สำเร็จ')+' '+done.length+'/'+result.results.length+(failed.length?' · '+failed.map(x=>x.key+': '+x.error).join('; '):''),!result.ok||!refreshed);
+  }finally{send.disabled=false}
 });
 
 window.RUAssetHub={refresh,connected:()=>{try{publicKey();return !!(cfg.url&&cfg.anonKey&&session?.access_token)}catch(_){return false}},call,photoConfirmed,openEditor:openRecordDialog};
+if(isPublicListing()){for(const id of ['ru-sb-connect','ru-sb-create','ru-sb-edit','ru-sb-delete','ru-sb-photo'])el(id).hidden=true;send.hidden=true;}
+window.addEventListener('storage',e=>{if(e.key===SESSKEY){authGeneration++;session=readStore(SESSKEY,null);clearPrivateView();if(session||isPublicListing())refresh();}});
 if(cfg.url&&cfg.anonKey&&session?.access_token)setTimeout(()=>refresh(),100);
 else{clearPrivateView();if(isPublicListing())setTimeout(()=>refresh(),100);}
 })();
