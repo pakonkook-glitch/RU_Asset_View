@@ -182,7 +182,7 @@ function draw(){{const g=document.getElementById('gq');if(g&&g.value.trim())setT
  function row(i,act,extra=''){const src=i.db_removed?'':i.db_thumb|| (i.ph?'images/th/'+i.ph:'');
  const ph=src?`<img loading="lazy" src="${src}" onclick="event.stopPropagation();lbOpen('${i.k}')" onerror="this.outerHTML='<div class=ph>📷</div>'">`:'<div class="ph">📷</div>';
  const h=holder(i),user=h?`<div class="user-field">👤 ผู้ใช้: <b>${esc(lab(h))}</b>${A[i.k]?'':' <span class="chip">เดิมในฐานข้อมูล</span>'}</div>`:'<div class="user-field unassigned">👤 ผู้ใช้: <b>ยังไม่จัดสรร</b></div>';
- return `<div class="row" data-k="${i.k}">${ph}<div class="t">${i.n} ${extra}<small>${i.no}${i.loc?' · '+i.loc:''}</small>${user}${i.y?`<span class="yr">ปี ${i.y}</span>`:'<span class="yr no">ไม่ระบุปี</span>'}${neBadge(i.k)}${peBadge(i.k)}</div><div class="acts">${act}<button class="btn gh ne" onclick="event.stopPropagation();neEdit('${i.k}')">✏️ แก้เลข</button><button class="btn gh pe" onclick="event.stopPropagation();peOpen('${i.k}')">📷 แก้รูป</button></div></div>`}
+ return `<div class="row" data-k="${i.k}">${ph}<div class="t">${i.n} ${extra}<small>${i.no}${i.loc?' · '+i.loc:''}</small>${user}${i.y?`<span class="yr">ปี ${i.y}</span>`:'<span class="yr no">ไม่ระบุปี</span>'}${neBadge(i.k)}${peBadge(i.k)}</div><div class="acts">${act}<button class="btn gh hu" onclick="event.stopPropagation();editHolder('${i.k}')">✏️ แก้ไขผู้รับผิดชอบ</button><button class="btn gh ne" onclick="event.stopPropagation();neEdit('${i.k}')">✏️ แก้เลข</button><button class="btn gh pe" onclick="event.stopPropagation();peOpen('${i.k}')">📷 แก้รูป</button></div></div>`}
 const NEK='ru_numedit_pub_v1',DNK='ru_numedit_pub_del_v1';let NE=(()=>{const o=pj(NEK,{}),r={};for(const k in o){const v=o[k];if(v&&v.new)r[k]=Object.assign({key:k},v)}return r})();let DELN=pj(DNK,{});const nesv=()=>{const ok=lsSet(NEK,JSON.stringify(NE))&lsSet(DNK,JSON.stringify(DELN));snap();stat();return !!ok};
 const IM=Object.fromEntries(DATA.items.map(i=>[i.k,i]));
 function neDups(k,v){const t=v.trim(),o=[];DATA.items.forEach(i=>{if(i.k!==k&&String(i.no||'').trim()===t)o.push('เลขเดิมของ '+i.k)});Object.entries(NE).forEach(([kk,p])=>{if(kk!==k&&String(p.new).trim()===t)o.push('ข้อเสนอของ '+kk)});return o}
@@ -365,6 +365,16 @@ function give(keys,ev){if(!cur||!keys.length)return;const at=new Date().toISOStr
   setTimeout(()=>{f.style.left=(me.left+me.width/2-12)+'px';f.style.top=(me.top+me.height/2-12)+'px';f.style.transform='scale(.4) rotate(360deg)';f.style.opacity='.2'},30+n*120);
   setTimeout(()=>{f.remove();sparkle(me.left+me.width/2,me.top+me.height/2);hop();const b=document.getElementById('b_'+c.id);if(b){b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}},780+n*120)})},200)}
 function sparkle(x,y){const cs=['#f78fb3','#b8a6ff','#8fd3ff','#9be3b5','#ffd56b'];for(let n=0;n<12;n++){const s=document.createElement('div');s.className='spark';s.style.left=x+'px';s.style.top=y+'px';s.style.background=cs[n%5];const a=n/12*6.28,r=40+Math.random()*30;s.style.setProperty('--dx',Math.cos(a)*r+'px');s.style.setProperty('--dy',Math.sin(a)*r+'px');document.body.appendChild(s);setTimeout(()=>s.remove(),750)}}
+function editHolder(k){
+ const i=IM[k];if(!i)return;
+ const current=holder(i),curName=current?nk(current):'';
+ const next=prompt('แก้ไขผู้รับผิดชอบของ '+(i.n||i.no||k)+'\nเว้นว่างเพื่อล้างชื่อ',curName);
+ if(next===null)return;
+ const v=next.trim(),at=new Date().toISOString();
+ if(v){const staff=(DATA.staff||[]).find(s=>nk(s)===v)||v;A[k]={who:staff,at};delete DELA[k]}
+ else{delete A[k];DELA[k]=at}
+ qA(k);sv();kick();draw();if(door)list();toast(v?'แก้ไขผู้รับผิดชอบแล้ว':'ล้างผู้รับผิดชอบแล้ว');
+}
 function un(k,b){if(!confirm('คืนรายการนี้กลับเข้าห้อง?'))return;const r=b.closest('.row');r.style.transform='translateX(60px)';r.style.opacity='0';setTimeout(()=>{delete A[k];DELA[k]=new Date().toISOString();qA(k);sv();kick();draw()},300)}
 function dl(n,t,ty){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:ty}));a.download=n;a.click()}
 function stkUrl(ks){return 'index.html#/stickers?ids='+ks.join(',')}
