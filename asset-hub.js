@@ -214,6 +214,13 @@ async function listPublicAssetRows(){
   }
   return all;
 }
+/* Inventory count is safe to show before admin login; no private columns are requested. */
+async function publicAssetCount(){
+  const packet=await raw('/rest/v1/ru_assets?select=key&deleted_at=is.null&limit=0',{
+    authenticated:false,headers:{Prefer:'count=exact'},withMeta:true
+  });
+  return rangeTotal(packet.response);
+}
 function readbackColumns(row){
   if(!row||typeof row!=='object')throw new Error('GET readback ไม่พบแถวข้อมูล');
   for(const c of ASSET_COLUMNS){if(!Object.prototype.hasOwnProperty.call(row,c))throw new Error('GET readback ไม่มี field '+c)}
@@ -605,7 +612,14 @@ send.onclick=run(async()=>{
   }finally{send.disabled=false}
 });
 
-window.RUAssetHub={refresh,connected:()=>{try{publicKey();return !!(cfg.url&&cfg.anonKey&&session?.access_token)}catch(_){return false}},call,photoConfirmed,openEditor:openRecordDialog};
+window.RUAssetHub={refresh,publicAssetCount,connected:()=>{try{publicKey();return !!(cfg.url&&cfg.anonKey&&session?.access_token)}catch(_){return false}},call,photoConfirmed,openEditor:openRecordDialog};
+if(!isPublicListing()){
+  el('ru-sb-connect').textContent='🔐 เข้าสู่ระบบผู้ดูแล';
+  // The project URL and publishable key are already configured in this app.
+  el('ru-sb-url').parentElement?.setAttribute('hidden','');
+  el('ru-sb-key').parentElement?.setAttribute('hidden','');
+  if(!session?.access_token)status('ผูกฐาน Supabase แล้ว · กรุณาเข้าสู่ระบบ');
+}
 if(isPublicListing()){for(const id of ['ru-sb-connect','ru-sb-create','ru-sb-edit','ru-sb-delete','ru-sb-photo'])el(id).hidden=true;send.hidden=true;}
 window.addEventListener('storage',e=>{if(e.key===SESSKEY){authGeneration++;session=readStore(SESSKEY,null);clearPrivateView();if(session||isPublicListing())refresh();}});
 if(cfg.url&&cfg.anonKey&&session?.access_token)setTimeout(()=>refresh(),100);

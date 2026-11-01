@@ -56,8 +56,13 @@ mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 .neb{margin-top:4px;font-size:.75rem;background:#fff7d6;border:1px solid #f5d56b;border-radius:10px;padding:4px 6px}.neb.dup{background:#ffe4e4;border-color:#f87171}.necx{font-size:.7rem;padding:2px 6px}</style><style>.yr{display:inline-block;font-size:.68rem;background:#eef2ff;color:#4338ca;border-radius:8px;padding:1px 6px;margin-top:2px}.yr.no{background:#f3f4f6;color:#9ca3af}</style></head><body><header class="rtop"><b>📦 RU Asset Database <small>ครุภัณฑ์งานการเงิน</small></b><nav><a href="./#/">รายการครุภัณฑ์</a><a href="./#/stickers">พิมพ์สติกเกอร์</a><a href="assign.html" class="on">🚪 จัดให้พนักงาน</a></nav></header>
 <header><h1>🚪✨ ประตูครุภัณฑ์</h1><div class="ntfw"><button class="btn add ntf" id="ntfb" onclick="openAssetEditor()">✏️ แก้ไขข้อมูลครุภัณฑ์</button> <small id="ntft"></small></div><small>เปิดประตู เลือกของใส่ให้แต่ละคน · <a href="./">← กลับหน้ารายการครุภัณฑ์</a></small></header>
 <div class="wrap">
+<div id="ru-assign-login-gate" role="status" aria-live="polite" style="padding:16px 18px;margin:10px 0 14px;border:2px solid #9878e8;background:#fff;color:#31264b;border-radius:16px;box-shadow:0 5px 18px #47368318">
+  <b style="display:block;font-size:1.05rem">🔐 ข้อมูลครุภัณฑ์ไม่ได้หาย — อยู่ในฐาน Supabase</b>
+  <p id="ru-assign-gate-message" style="margin:8px 0">กำลังตรวจจำนวนรายการในฐานกลาง… หน้านี้ต้องเข้าสู่ระบบผู้ดูแลก่อนจึงจะแสดงผู้ถือครองและรายการจัดสรร</p>
+  <button class="btn add" type="button" onclick="cfgOpen()" style="font-weight:bold">เข้าสู่ระบบเพื่อโหลดครุภัณฑ์</button>
+</div>
 <div id="sbad" style="display:none;background:#d62828;color:#fff;padding:10px 12px;border-radius:12px;margin:8px 0;font-weight:bold">⛔ เบราว์เซอร์นี้บันทึกไม่ได้ — <i></i><br><small style="font-weight:normal">ตอนนี้เก็บไว้ชั่วคราวในหน้านี้เท่านั้น ถ้าปิด/รีโหลดจะหาย · กด “ดาวน์โหลดสำรอง (JSON)” หรือเปิดด้วย Chrome/Edge ปกติ (ไม่ใช่โหมดไม่ระบุตัวตน)</small></div>
-<div id="sync" style="padding:8px 10px;border-radius:12px;margin:6px 0;font-size:.85rem;background:#eee"><span>☁️</span> <button class="btn gh" onclick="cfgOpen()">⚙️ ตั้งค่าออนไลน์</button> <button class="btn gh" onclick="cfgLink()">🔗 ลิงก์ให้น้อง</button> <button class="btn gh" id="readOnlySyncBtn" onclick="readOnlySync()">📥 อ่านข้อมูลออนไลน์ (ไม่ส่งข้อมูล)</button> <button class="btn gh" onclick="batchApplyNumbers()">🔄 อัปเดตลง DB</button></div>
+<div id="sync" style="padding:8px 10px;border-radius:12px;margin:6px 0;font-size:.85rem;background:#eee"><span>☁️</span> <button class="btn gh" onclick="cfgOpen()">🔐 เข้าสู่ระบบผู้ดูแล</button> <button class="btn gh" onclick="cfgLink()">🔗 ลิงก์ให้น้อง</button> <button class="btn gh" id="readOnlySyncBtn" onclick="readOnlySync()">📥 อ่านข้อมูลออนไลน์ (ไม่ส่งข้อมูล)</button> <button class="btn gh" onclick="batchApplyNumbers()">🔄 อัปเดตลง DB</button></div>
 <div id="cf" class="card" style="display:none;background:#fff3c4"></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0;font-size:.85rem"><span id="sst">💾</span><button class="btn gh" onclick="expj()">💾 ดาวน์โหลดสำรอง (JSON)</button><button class="btn gh" onclick="restoreLast()">↩️ กู้คืนข้อมูลล่าสุด</button></div>
 <label>👤 ผู้ใช้/ผู้รับผิดชอบ (เฉพาะ Admin/Assign)</label><select id="who" aria-label="ผู้ใช้หรือผู้รับผิดชอบ"></select><div class="note" style="text-align:left;margin:4px 0 0">ชื่อผู้ใช้จะแสดงเฉพาะหน้านี้และใช้สำหรับจัดสรรครุภัณฑ์</div>
@@ -141,19 +146,39 @@ function merge(items){let ch=0;const seen=new Set();(items||[]).forEach(r=>{cons
  // Remote absence is not proof that browser cache is newer. Only explicit local edits enter Q.
  lsSet(QK,JSON.stringify(Q));if(ch){sv();nesv();draw();if(door)list()}drawCF()}
 /* Explicit online read. Unlike sync(), this never sends the queued changes to Google. */
-async function readOnlySync(){if(!on()){alert('กรุณาตั้งค่า URL และ TOKEN ก่อน');return}const ok=window.RUAssetHub&&await window.RUAssetHub.refresh();SYNC.st=ok?'ok':'err';SYNC.t=new Date();SYNC.err=ok?'':'อ่านข้อมูลหลักไม่สำเร็จ';badge()}
+async function readOnlySync(){if(!on()){toast('กรุณาเข้าสู่ระบบผู้ดูแลก่อนอ่านข้อมูลการจัดสรร',true);cfgOpen();return}const ok=window.RUAssetHub&&await window.RUAssetHub.refresh();SYNC.st=ok?'ok':'err';SYNC.t=new Date();SYNC.err=ok?'':'อ่านข้อมูลหลักไม่สำเร็จ';badge()}
 async function sync(){return batchApplyNumbers()} // only writes to RU Asset DB, never legacy sheet
 let syT=null;function kick(){clearTimeout(syT);badge();/* manual approval only */}
+let cloudAssetCount=null;
+function updateLoginGate(){
+ const gate=document.getElementById('ru-assign-login-gate');if(!gate)return;
+ gate.hidden=on();
+ const msg=document.getElementById('ru-assign-gate-message');
+ if(msg&&!on())msg.textContent='เชื่อมฐาน Supabase แล้ว'+(Number.isInteger(cloudAssetCount)?' · มีครุภัณฑ์ '+cloudAssetCount+' รายการ':'')+' แต่ยังไม่ได้เข้าสู่ระบบผู้ดูแลในเบราว์เซอร์นี้ กรุณาเข้าสู่ระบบเพื่อโหลดรายการและผู้ถือครอง (ไม่ใช่ข้อมูลหาย)';
+}
+function refreshPublicCount(){
+ if(on()||!window.RUAssetHub?.publicAssetCount)return;
+ window.RUAssetHub.publicAssetCount().then(n=>{if(Number.isInteger(n)&&n>=0){cloudAssetCount=n;updateLoginGate()}}).catch(()=>{
+  const msg=document.getElementById('ru-assign-gate-message');
+  if(msg&&!on())msg.textContent='ยังไม่ได้เข้าสู่ระบบผู้ดูแล จึงไม่แสดงรายการจัดสรร โปรดกดเข้าสู่ระบบเพื่ออ่านข้อมูลจากฐานกลาง';
+ });
+}
 function badge(){const b=document.getElementById('sync');if(!b)return;const n=Object.keys(Q).length;let t,c;
- if(!on()){t='☁️ ออนไลน์: ยังไม่ได้ตั้งค่า (ใช้ในเครื่องนี้อย่างเดียว)';c='#eee'}
+ if(!on()){t='🔐 เชื่อม Supabase แล้ว · ยังไม่ได้เข้าสู่ระบบผู้ดูแล';c='#fff3c4'}
  else if(SYNC.st==='err'){t='❌ ซิงก์ไม่สำเร็จ'+(n?` · รอส่ง ${n} รายการ`:'')+' — '+SYNC.err;c='#ffd6d6'}
  else if(n||SYNC.st==='busy'&&n){t=`⏳ รอส่ง ${n} รายการ`;c='#fff3c4'}
  else if(SYNC.st==='busy'){t='🔄 กำลังซิงก์…';c='#e3f0ff'}
  else{t='☁️ รอคำสั่งจากผู้ใช้ · ไม่มีรายการค้างส่ง';c='#d9f7de'}
- b.querySelector("span").textContent=t;b.style.background=c}
+ b.querySelector("span").textContent=t;b.style.background=c;updateLoginGate()}
 function drawCF(){const e=document.getElementById('cf');if(!e)return;CF=CF.slice(0,20);e.style.display=CF.length?'block':'none';
  e.innerHTML=CF.length?'<b>⚠️ มีผู้จัดแล้ว (ชนกับเครื่องอื่น)</b><button class="btn gh" style="float:right" onclick="CF=[];drawCF()">รับทราบ</button>'+CF.map(c=>`<div>• ${esc(iname(c.k))} → อยู่กับ <b>${esc(lab(c.w))}</b> (ที่เลือกให้ ${esc(lab(c.l))} ไม่ได้)</div>`).join(''):''}
-function cfgOpen(){const b=document.getElementById('ru-sb-connect');if(b)b.click();else alert('เปิดการเชื่อมต่อ Supabase ไม่สำเร็จ')}
+function cfgOpen(){
+ const b=document.getElementById('ru-sb-connect'),p=document.getElementById('ru-sb-panel');
+ if(!b||!p){alert('เปิดหน้าล็อกอิน Supabase ไม่สำเร็จ');return}
+ if(p.style.display==='none')b.click();
+ p.scrollIntoView({behavior:'smooth',block:'center'});
+ document.getElementById('ru-sb-email')?.focus({preventScroll:true});
+}
 function cfgLink(){const u=location.origin+location.pathname;(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('คัดลอก URL เว็บไซต์แล้ว'),()=>prompt('URL เว็บไซต์',u))}
 function commitPending(){if(door&&cur&&SEL.size){const at=new Date().toISOString(),k=[...SEL];SEL=new Set();k.forEach(x=>{A[x]={who:cur,at};delete DELA[x];qA(x)});sv();badge()}}
 addEventListener('pagehide',commitPending);document.addEventListener('visibilitychange',()=>{if(document.hidden)commitPending();else if(on())kick()});
@@ -403,7 +428,7 @@ window.RUAssetPage={savePending:batchApplyNumbers,clearPrivate:function(){if(!hi
   next.push(i);
  });
  DATA.items.splice(0,DATA.items.length,...next);Object.keys(IM).forEach(k=>delete IM[k]);DATA.items.forEach(i=>{IM[i.k]=i});DATA.items.sort(ysort);
- fill();QH.clear();draw();if(door)list();
+ fill();QH.clear();draw();badge();if(door)list();
 }};
 fill();draw();
 (function(){
@@ -413,7 +438,7 @@ fill();draw();
   setTimeout(function(){if(IM[k])peOpen(k)},1100);
  }
 })();
-if(!LSOK)showBad();stat();badge();drawCF();if(false)idbGet().then(b=>{if(b&&b.A&&!Object.keys(A).length&&Object.keys(b.A).length){A=normA(b.A);NE=b.NE||{};draw();toast('ดึงข้อมูลจากสำรอง IndexedDB แล้ว')}});// no auto-sync on page load
+if(!LSOK)showBad();stat();badge();drawCF();setTimeout(refreshPublicCount,150); // Never restore private inventory while signed out.
 addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElementById('lb').classList.contains('on')){lbHide();return}if(door)closeDoor()});
 </script><div class="room" id="pe" onclick="if(event.target===this)peClose()"><div class="pesh">
 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><button class="peback" onclick="peClose()">← ปิด</button><b style="flex:1">📷 แก้รูป</b></div>
@@ -424,4 +449,4 @@ addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElement
 <div class="note">ℹ️ กดบันทึกแล้วระบบจะอัปโหลดหรือลบรูปออนไลน์ทันที</div>
 <div class="pebar" style="display:flex;gap:8px;margin-top:10px"><button class="btn gh" style="flex:1" onclick="peClose()">ยกเลิก</button><button class="btn add" id="pesave" style="flex:2" disabled onclick="peSave()">✅ บันทึกรูป</button></div>
 <div id="peold"></div></div></div>
-<div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="asset-hub.js?v=20261102-1"></script></body></html>
+<div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="asset-hub.js?v=20261102-assign-login"></script></body></html>
