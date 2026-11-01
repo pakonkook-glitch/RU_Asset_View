@@ -1,5 +1,5 @@
 <!doctype html><html lang="th"><head><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>ประตูครุภัณฑ์ · จัดครุภัณฑ์ให้พนักงาน</title><style>
+<title>ประตูครุภัณฑ์ · จัดครุภัณฑ์ให้พนักงาน</title><style>#ppcard{display:none!important}</style><style>
 :root{--bg:#fff7fb;--pk:#ffd6e8;--pu:#e6dcff;--bl:#d4ecff;--gr:#d6f5e3;--ye:#fff1c2;--ink:#5a4a6a;--mut:#9a8aa8;--acc:#f78fb3}
 *{box-sizing:border-box}body{margin:0;font-family:"Sarabun","Noto Sans Thai",system-ui,sans-serif;background:radial-gradient(circle at 20% 0,#ffe9f3,transparent 50%),radial-gradient(circle at 90% 30%,#eae2ff,transparent 45%),var(--bg);color:var(--ink);overflow-x:hidden}
 header{padding:14px;text-align:center}header h1{margin:0;font-size:1.2rem}header small{color:var(--mut)}
@@ -189,9 +189,9 @@ function neDups(k,v){const t=v.trim(),o=[];DATA.items.forEach(i=>{if(i.k!==k&&St
 function neBadge(k){const p=NE[k];if(!p)return '';const d=neDups(k,p.new);return `<div class="neb${d.length?' dup':''}">✏️ ${esc(p.old)} → <b>${esc(p.new)}</b>${d.length?' ⚠️ ซ้ำ':''} <span class="chip">รอแก้ใน DB</span> <button class="btn gh necx" onclick="event.stopPropagation();neCancel('${k}')">↩️ ยกเลิก</button></div>`}
 
 /* ===== 📷 ข้อเสนอรูป (เหมือนข้อเสนอแก้เลข: ยังไม่แก้รูปจริง) ===== */
-const PPK='ru_photo_prop_v1',PQK2='ru_photo_q_v1',PMAX=1024,PQ_=0.78;
-let PP=pj(PPK,{}),PQ2=pj(PQK2,{}),RP={},PSY={st:'',err:''},PE=null;const PMEM={};
-const ppsv=()=>lsSet(PPK,JSON.stringify(PP))&lsSet(PQK2,JSON.stringify(PQ2));
+const PPK='ru_photo_prop_v1',PMAX=1024,PQ_=0.78;
+let PP=pj(PPK,{}),RP={},PSY={st:'',err:''},PE=null;const PMEM={};
+const ppsv=()=>lsSet(PPK,JSON.stringify(PP));
 function pdb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('ru_assign_photo',1);r.onupgradeneeded=()=>r.result.createObjectStore('p');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
 function pPut(k,b){PMEM[k]=b;return pdb().then(db=>new Promise((res,rej)=>{const t=db.transaction('p','readwrite');t.objectStore('p').put(b,k);t.oncomplete=()=>res(true);t.onerror=()=>rej(t.error)})).catch(e=>false)}
 function pGet(k){if(PMEM[k])return Promise.resolve(PMEM[k]);return pdb().then(db=>new Promise(r=>{const q=db.transaction('p').objectStore('p').get(k);q.onsuccess=()=>r(q.result||null);q.onerror=()=>r(null)})).catch(()=>null)}
@@ -216,26 +216,13 @@ async function peFile(el){const f=el.files&&el.files[0];el.value='';if(!f||!PE)r
   Object.assign(PE,{blob:b,th:t,act:'set',w,h});document.getElementById('penew').innerHTML=`<img src="${t}">`;st.textContent=`ย่อแล้ว ${w}×${h} · ${kb(b.size)} (จาก ${kb(f.size)}) — กด “บันทึกรูป” เพื่ออัปเดต`;document.getElementById('pesave').disabled=false}
  catch(e){st.textContent='❌ '+(e.message||e)}}
 function peDel(){if(!PE)return;Object.assign(PE,{blob:null,th:'',act:'del'});document.getElementById('penew').innerHTML='🗑️';document.getElementById('pest').textContent='เสนอให้ลบรูปปัจจุบัน — กด “บันทึกรูป” เพื่ออัปเดต';document.getElementById('pesave').disabled=false}
-async function peSave(){if(!PE||!PE.act)return;const k=PE.k,i=IM[k];const at=new Date().toISOString();
- if(PE.act==='set'){const ok=await pPut(k,PE.blob);if(!ok){toast('⚠️ เก็บรูปลงเครื่องไม่ได้ กรุณาลองใหม่');return}}else pDel(k);
- PP[k]={key:k,act:PE.act,at,th:PE.th,sz:PE.blob?PE.blob.size:0,w:PE.w,h:PE.h,no:i.no||'',name:i.n||'',st:'local',dev:(cur||'')+'@'+DEV};PQ2[k]={op:'put',at};
- const ok=ppsv();peClose();PSY.st=on()&&navigator.onLine!==false?'busy':'pending';PSY.err='';ppDraw();neRedraw();
- toast(ok?(on()&&navigator.onLine!==false?'⏳ กำลังส่งรูปภาพไปยัง Supabase Storage และ Supabase Database…':'🟡 บันทึกสำรองในเครื่องแล้ว (รอเชื่อมต่ออินเทอร์เน็ตเพื่อส่งขึ้น Drive)'):'⚠️ เก็บคิวรูปได้ชั่วคราวเท่านั้น',!ok);psKick()}
-function peCancel(k){if(!PP[k])return;if(!confirm('ยกเลิกข้อเสนอรูปนี้?'))return;const p=PP[k];delete PP[k];pDel(k);
- if(p.st==='sent'||on())PQ2[k]={op:'cancel',at:new Date().toISOString()};else delete PQ2[k];ppsv();ppDraw();neRedraw();toast('ยกเลิกข้อเสนอรูปแล้ว');psKick()}
+async function photoPutNow(k,act,p){if(!on())throw new Error('ยังไม่ได้เชื่อมต่อระบบออนไลน์');const body={action:'photoPut',key:k,act,at:p.at,no:p.no,name:p.name,th:p.th,dev:p.dev};if(act==='set'){if(!p.blob)throw new Error('ไม่พบไฟล์รูปที่เลือก');body.b64=await b64of(p.blob)}const j=await api(body);if(j.status!=='success'||j.assetId!==k||j.act!==act||(act==='set'&&!j.fileId))throw new Error('ระบบออนไลน์ไม่ยืนยันการบันทึกรูป');const check=await api({action:'getAssets'});if(!check.ok||!Array.isArray(check.assets))throw new Error('อ่านผลยืนยันรูปไม่ได้');const saved=check.assets.find(a=>a.key===k);if(!saved||(act==='set'&&(saved.ru_photo_id!==j.fileId||saved.ru_photo_url!==j.imageUrl))||(act==='del'&&saved.ru_photo_removed!=='1'))throw new Error('ระบบออนไลน์ยังไม่ยืนยันรูปนี้');const i=IM[k];if(i){i.db_removed=act==='del';i.db_thumb=act==='set'?(p.th||''):'';i.db_url=act==='set'?j.imageUrl:''}return j}
+async function peSave(){if(!PE||!PE.act)return;const k=PE.k,i=IM[k],act=PE.act,p={at:new Date().toISOString(),no:i.no||'',name:i.n||'',th:PE.th,blob:PE.blob};peClose();PSY.st='busy';PSY.err='';try{await photoPutNow(k,act,p);PSY.st='ok';toast(act==='del'?'✅ ลบรูปออนไลน์แล้ว':'✅ อัปโหลดรูปออนไลน์แล้ว');if(door)list();else draw()}catch(e){PSY.st='err';PSY.err=String(e.message||e);toast('❌ '+PSY.err,true)}}
+async function peCancel(k){if(!confirm('ลบรูปนี้ออกจากระบบออนไลน์ใช่ไหม?'))return;const i=IM[k];if(!i)return;try{PSY.st='busy';await photoPutNow(k,'del',{at:new Date().toISOString(),no:i.no||'',name:i.n||'',th:''});PSY.st='ok';toast('✅ ลบรูปออนไลน์แล้ว');if(door)list();else draw()}catch(e){PSY.st='err';PSY.err=String(e.message||e);toast('❌ '+PSY.err,true)}}
 async function peView(k){const b=await pGet(k);const p=PP[k]||RP[k];const im=document.getElementById('lbi');im.onerror=null;im.src=b?URL.createObjectURL(b):(p&&p.th||'');const i=IM[k]||{};document.getElementById('lbc').textContent='ข้อเสนอรูป · '+(i.n||k)+' · '+(i.no||'');LB.s=1;LB.x=0;LB.y=0;lbApply();document.getElementById('lb').classList.add('on')}
 async function peDl(k){const b=await pGet(k);if(!b){alert('ไม่มีไฟล์รูปเต็มในเครื่องนี้');return}const i=IM[k]||{};const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=((i.no||k)+' '+(i.n||'')).replace(/[\\/:*?"<>|]+/g,' ').slice(0,120)+' (ข้อเสนอ).jpg';document.body.appendChild(a);a.click();a.remove()}
-function ppDraw(){const ks=[...new Set([...Object.keys(PP),...Object.keys(RP)])].filter(k=>IM[k]);const c=document.getElementById('ppcard');if(!c)return;document.getElementById('ppn').textContent=ks.length;
- const st=document.getElementById('ppst'),pending=Object.keys(PQ2).length;
- const connected=on()&&navigator.onLine!==false;
- if(PSY.err){st.textContent='❌ อัปโหลดไม่สำเร็จ: '+PSY.err+' (รูปยังสำรองอยู่ในเครื่อง)';st.style.color='#a11'}
- else if(pending&&!connected){st.textContent='🟡 บันทึกสำรองในเครื่องแล้ว (รอเชื่อมต่ออินเทอร์เน็ตเพื่อส่งขึ้น Drive)';st.style.color='#986000'}
- else if(pending&&PSY.st==='busy'){st.textContent='⏳ กำลังส่งรูปภาพไปยัง Supabase Storage และอัปเดต Supabase Database…';st.style.color='#295a96'}
- else if(pending){st.textContent='⏳ รอส่งรูปขึ้นฐานกลาง '+pending+' รายการ';st.style.color='#986000'}
- else if(PSY.st==='ok'){st.textContent='✅ บันทึกรูปภาพลงฐานข้อมูลกลางสำเร็จ (Supabase ยืนยันแล้ว)';st.style.color='#176c35'}
- else{st.textContent='';st.style.color=''}
- document.getElementById('pplist').innerHTML=ks.length?ks.map(k=>{const p=PP[k]||RP[k];return row(IM[k],(PP[k]?`<button class="btn gh" onclick="peView('${k}')">🔍 ดู</button>`+(p.act==='set'?`<button class="btn gh" onclick="peDl('${k}')">⬇️</button>`:''):''))}).join(''):'<div class="note">ยังไม่มีข้อเสนอรูป · กด “📷 แก้รูป” ที่รายการใดก็ได้</div>'}
-let psBusy=false,psT=null;
+function ppDraw(){}
+let psBusy=false;
 function psKick(){clearTimeout(psT);ppDraw();if(on()&&navigator.onLine!==false&&Object.keys(PQ2).length)psT=setTimeout(photoSync,500)}
 async function photoSync(){
  if(!on()||navigator.onLine===false||psBusy)return false;
@@ -507,7 +494,7 @@ addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.getElement
 <div class="pecol"><div>รูปปัจจุบัน<div class="pebox" id="pecur"></div></div><div>รูปที่จะเสนอ<div class="pebox" id="penew">➕</div></div></div>
 <div class="pebtns"><label class="btn add">📸 ถ่ายรูป<input type="file" accept="image/*" capture="environment" hidden onchange="peFile(this)"></label><label class="btn gh">🖼️ เลือกไฟล์<input type="file" accept="image/*" hidden onchange="peFile(this)"></label><button class="btn rm" id="pedel" onclick="peDel()">🗑️ ลบรูป</button></div>
 <div class="note" id="pest"></div>
-<div class="note">ℹ️ กดบันทึกแล้วระบบจะส่งรูปขึ้น Supabase Storage และอัปเดตฐานกลางโดยตรง หากเชื่อมต่อไม่ได้ รูปจะค้างในเครื่องและส่งซ้ำเมื่อกลับมาออนไลน์ · 1 รูปต่อครุภัณฑ์ · หลีกเลี่ยงภาพติดชื่อคนหรือเอกสาร</div>
+<div class="note">ℹ️ กดบันทึกแล้วระบบจะอัปโหลดหรือลบรูปออนไลน์ทันที</div>
 <div class="pebar" style="display:flex;gap:8px;margin-top:10px"><button class="btn gh" style="flex:1" onclick="peClose()">ยกเลิก</button><button class="btn add" id="pesave" style="flex:2" disabled onclick="peSave()">✅ บันทึกรูป</button></div>
 <div id="peold"></div></div></div>
 <div id="lb"><div class="lbt"><button onclick="lbZ(1/1.4)">−</button><button onclick="lbZ(1.4)">＋</button><button onclick="lbClose()">✕</button></div><div id="lbv"><img id="lbi" alt=""></div><div id="lbc"></div></div><div id="ver">เวอร์ชัน v2026-10-26 15:50 (save-fix+online+search+photo-proposal+notify+loc-r275) · เก็บในเครื่องนี้ + ออนไลน์ (ถ้าตั้งค่า)</div><script src="asset-hub.js"></script></body></html>
