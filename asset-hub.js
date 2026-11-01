@@ -11,6 +11,8 @@ const SESSKEY='ru_supabase_session_cmmcyyonkpihqlfhtnzw';
 const LEGACY_CACHE='ru_supabase_verified_cache_v1';
 const DEFAULT={url:'https://cmmcyyonkpihqlfhtnzw.supabase.co',anonKey:'sb_publishable_hqs6euCgystuRs5ns2WFEQ_pfAgJmCh'};
 const PAGE_SIZE=1000;
+const PUBLIC_COLUMNS='key,asset_name,asset_no,asset_no_alt,barcode,serial_no,category,location,condition,status,acquired_date_be,fiscal_year,quantity,serial_range,specs,ru_photo_thumb,ru_photo_removed';
+const isPublicListing=()=>/(?:\/|\/index\.html)$/i.test(window.location.pathname);
 const PHOTO_PATH_RE=/^r\d+\/[a-f0-9-]+\.jpg$/;
 const ASSET_COLUMNS=['key','asset_name','asset_no','asset_no_alt','barcode','serial_no','category','location','condition','status','acquired_date_be','fiscal_year','assignee','quantity','serial_range','specs','ru_photo_id','ru_photo_thumb','ru_photo_url','ru_photo_removed','revision','updated_at','deleted_at'];
 const MUTABLE_COLUMNS=new Set(['asset_name','asset_no','asset_no_alt','barcode','serial_no','category','location','condition','status','acquired_date_be','fiscal_year','assignee','quantity','serial_range','specs','ru_photo_id','ru_photo_thumb','ru_photo_url','ru_photo_removed','deleted_at']);
@@ -186,6 +188,22 @@ async function listAssetRows({includeDeleted=false,signPhotos=false}={}){
   }
   if(signPhotos){
     lastPhotoWarningCount=await signPrivatePhotos(all);
+  }
+  return all;
+}
+/* The public index reads only explicitly granted inventory columns.
+   Admin/edit/assign pages continue using authenticated Supabase reads. */
+async function listPublicAssetRows(){
+  let offset=0,total=null;
+  const all=[];
+  while(true){
+    const path='?select='+PUBLIC_COLUMNS+'&deleted_at=is.null&order=key.asc&limit='+PAGE_SIZE+'&offset='+offset;
+    const packet=await raw('/rest/v1/ru_assets'+path,{authenticated:false,headers:{Prefer:'count=exact'},withMeta:true});
+    const rows=validAssetRows(packet.data||[]);
+    total=rangeTotal(packet.response)??total;
+    all.push(...rows);
+    if((total!==null&&all.length>=total)||rows.length===0)break;
+    offset+=rows.length;
   }
   return all;
 }
@@ -413,7 +431,9 @@ async function uploadFromBar(){
 }
 
 async function readAssetsForPage(){
-  const rows=await listAssetRows({includeDeleted:false,signPhotos:true});
+  const rows=!session?.access_token&&isPublicListing()
+    ?await listPublicAssetRows()
+    :await listAssetRows({includeDeleted:false,signPhotos:true});
   assets=rows;
   try{hook?.apply?.(rows)}catch(e){throw new Error('RUAssetPage.apply ล้มเหลว: '+e.message)}
   return rows;
@@ -568,5 +588,6 @@ send.onclick=run(async()=>{
 });
 
 window.RUAssetHub={refresh,connected:()=>{try{publicKey();return !!(cfg.url&&cfg.anonKey&&session?.access_token)}catch(_){return false}},call,photoConfirmed,openEditor:openRecordDialog};
-if(cfg.url&&cfg.anonKey&&session?.access_token)setTimeout(()=>refresh(),100);else clearPrivateView();
+if(cfg.url&&cfg.anonKey&&session?.access_token)setTimeout(()=>refresh(),100);
+else{clearPrivateView();if(isPublicListing())setTimeout(()=>refresh(),100);}
 })();
