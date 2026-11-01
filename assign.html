@@ -53,7 +53,8 @@ mark{background:#fff0a8;color:inherit;border-radius:3px;padding:0 1px}
 #pe{z-index:150}.pesh{background:var(--bg);width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:26px 26px 0 0;padding:14px}.peback{background:#fff;border:2px solid #b8a6ff;color:#5b3fd1;font-weight:700;border-radius:14px;padding:9px 14px;font-size:.95rem}.pecol{display:flex;gap:10px;margin:8px 0}.pecol>div{flex:1;text-align:center;font-size:.75rem;color:var(--mut)}.pebox{aspect-ratio:1;border-radius:14px;background:var(--pu);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-top:4px;font-size:2rem}.pebox img{width:100%;height:100%;object-fit:contain;background:#fff}
 .pebtns{display:flex;gap:8px;flex-wrap:wrap}.pebtns .btn,.pebtns label.btn{flex:1;text-align:center;padding:12px 8px;min-width:30%}.btn.pe{background:#e0f0ff}
 .ntfw{margin:6px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}.btn.ntf{font-size:1.05rem;padding:10px 18px;background:#ffe08a;border:2px solid #f5b800;color:#5a3d00;font-weight:800}
-.neb{margin-top:4px;font-size:.75rem;background:#fff7d6;border:1px solid #f5d56b;border-radius:10px;padding:4px 6px}.neb.dup{background:#ffe4e4;border-color:#f87171}.necx{font-size:.7rem;padding:2px 6px}</style><style>.yr{display:inline-block;font-size:.68rem;background:#eef2ff;color:#4338ca;border-radius:8px;padding:1px 6px;margin-top:2px}.yr.no{background:#f3f4f6;color:#9ca3af}</style></head><body><header class="rtop"><b>📦 RU Asset Database <small>ครุภัณฑ์งานการเงิน</small></b><nav><a href="./#/">รายการครุภัณฑ์</a><a href="./#/stickers">พิมพ์สติกเกอร์</a><a href="assign.html" class="on">🚪 จัดให้พนักงาน</a></nav></header>
+.neb{margin-top:4px;font-size:.75rem;background:#fff7d6;border:1px solid #f5d56b;border-radius:10px;padding:4px 6px}.neb.dup{background:#ffe4e4;border-color:#f87171}.necx{font-size:.7rem;padding:2px 6px}</style><style>.yr{display:inline-block;font-size:.68rem;background:#eef2ff;color:#4338ca;border-radius:8px;padding:1px 6px;margin-top:2px}.yr.no{background:#f3f4f6;color:#9ca3af}</style><script src="ru-verified-holders.js"></script>
+</head><body><header class="rtop"><b>📦 RU Asset Database <small>ครุภัณฑ์งานการเงิน</small></b><nav><a href="./#/">รายการครุภัณฑ์</a><a href="./#/stickers">พิมพ์สติกเกอร์</a><a href="assign.html" class="on">🚪 จัดให้พนักงาน</a></nav></header>
 <header><h1>🚪✨ ประตูครุภัณฑ์</h1><div class="ntfw"><button class="btn add ntf" id="ntfb" onclick="openAssetEditor()">✏️ แก้ไขข้อมูลครุภัณฑ์</button> <small id="ntft"></small></div><small>เปิดประตู เลือกของใส่ให้แต่ละคน · <a href="./">← กลับหน้ารายการครุภัณฑ์</a></small></header>
 <div class="wrap">
 <div id="sbad" style="display:none;background:#d62828;color:#fff;padding:10px 12px;border-radius:12px;margin:8px 0;font-weight:bold">⛔ เบราว์เซอร์นี้บันทึกไม่ได้ — <i></i><br><small style="font-weight:normal">ตอนนี้เก็บไว้ชั่วคราวในหน้านี้เท่านั้น ถ้าปิด/รีโหลดจะหาย · กด “ดาวน์โหลดสำรอง (JSON)” หรือเปิดด้วย Chrome/Edge ปกติ (ไม่ใช่โหมดไม่ระบุตัวตน)</small></div>
@@ -85,7 +86,11 @@ const CATS=[{id:'chair',t:'เก้าอี้',e:'🪑',bg:'#ffd6e8',hint:'�
 {id:'printer',t:'พรินเตอร์',e:'🖨️',bg:'#e6dcff',hint:'เลือกได้หลายเครื่อง'},
 {id:'calc',t:'เครื่องคิดเลข',e:'🧮',bg:'#d6f5e3',hint:'เลือกได้หลายเครื่อง'},{id:'cab',t:'ตู้เหล็ก',e:'🗃️',bg:'#e2e8f0',hint:'ตู้เหล็ก ตู้เก็บเอกสาร ตู้ลิ้นชัก ตู้บานเลื่อน ตู้นิรภัย ฯลฯ · เลือกได้หลายรายการ'}];
 const OTHER={id:'other',t:'อื่น ๆ',e:'📦',hint:'ตู้เซิร์ฟเวอร์ กล้อง แอร์ ฯลฯ · เลือกได้หลายรายการ'};
-const CABRX=/^\s*"?\s*ตู้(?!เซิ[ฟร์]*เวอร์)/;DATA.items.forEach(i=>{if(i.c==='other'&&CABRX.test(i.n))i.c='cab'});
+const CABRX=/^\s*"?\s*ตู้(?!เซิ[ฟร์]*เวอร์)/;
+const RU_HOLDER_KEY=s=>String(s||'').normalize('NFC').toLowerCase().replace(/[\s\u200b-\u200d\ufeff]/g,'');
+const RU_HOLDER_SHORT=s=>{const m=/^(.*?) \((.*)\)$/.exec(String(s||''));return m?m[1]:String(s||'')};
+const RU_VERIFIED=window.RU_VERIFIED_HOLDERS||{};
+DATA.items.forEach(i=>{const h=RU_VERIFIED[RU_HOLDER_KEY(i.no)];if(h){const staff=(DATA.staff||[]).find(s=>RU_HOLDER_SHORT(s)===h);i.h=staff||h;}});DATA.items.forEach(i=>{if(i.c==='other'&&CABRX.test(i.n))i.c='cab'});
 const ysort=(a,b)=>((a.y||1e9)-(b.y||1e9))||String(a.no||'').localeCompare(String(b.no||''),'th',{numeric:true});DATA.items.sort(ysort);
 /* ===== ระบบบันทึก (กันพัง) + ซิงก์ออนไลน์ ===== */
 const KEY='ru_assign_pub_v1',SNK='ru_assign_pub_snap_v1',DLK='ru_assign_pub_del_v1',CFK='ru_sync_cfg_v1',QK='ru_sync_q_v1';
