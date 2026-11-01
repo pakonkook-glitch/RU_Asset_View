@@ -58,6 +58,29 @@ test('MOCK: JPEG upload checks stored bytes then metadata GET; removal preserves
   const result=await h.hub.call({action:'photoPut',key:'r1',act:'set',b64:Buffer.from(bytes).toString('base64'),th:'MOCK_THUMB'});assert.equal(result.status,'success');assert.match(db.ru_photo_id,/^r1\//);
   await h.hub.call({action:'photoPut',key:'r1',act:'del'});assert.equal(db.ru_photo_removed,'1');assert(!h.requests.some(r=>r.options.method==='DELETE'));
 });
+test('MOCK: new staff name is inserted and verified through Supabase; duplicate is safe',async()=>{
+  const names=new Set(['EXISTING STAFF']);
+  const h=setup({fetcher:(url,o)=>{
+    if(!url.includes('/ru_asset_staff'))throw Error('unexpected route');
+    const query=new URL(url).searchParams;
+    if(o.method==='POST'){const v=JSON.parse(o.body).staff_name;names.add(v);return json([{staff_name:v}])}
+    const eq=query.get('staff_name');
+    return json(eq?names.has(eq.slice(3))?[{staff_name:eq.slice(3)}]:[]:[...names].map(staff_name=>({staff_name})));
+  }});
+  const created=await h.hub.call({action:'createStaff',name:'NEW STAFF'});
+  assert.equal(created.name,'NEW STAFF');
+  assert(h.requests.some(r=>r.options.method==='POST'&&r.url.includes('ru_asset_staff')));
+  const previousWrites=h.requests.filter(r=>r.options.method==='POST').length;
+  await h.hub.call({action:'createStaff',name:'NEW STAFF'});
+  assert.equal(h.requests.filter(r=>r.options.method==='POST').length,previousWrites);
+  const listed=await h.hub.call({action:'getStaff'});
+  assert(listed.staff.includes('NEW STAFF'));
+});
+test('MOCK: unauthorized staff creation never sends a request',async()=>{
+  const h=setup({loggedIn:false,fetcher:()=>{throw Error('unexpected network')}});
+  await assert.rejects(h.hub.call({action:'createStaff',name:'NEW STAFF'}));
+  assert.equal(h.requests.length,0);
+});
 test('all inline page scripts parse; assign has no automatic photo writes',()=>{
   for(const file of ['index.html','edit.html','assign.html']){
     const html=fs.readFileSync(file,'utf8');for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){if(/src=|application\/json/i.test(m[1]))continue;new vm.Script(m[2],{filename:file})}

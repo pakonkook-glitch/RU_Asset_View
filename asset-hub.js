@@ -162,6 +162,28 @@ async function request(route,options={}){
   return options.withMeta?{data,response}:data;
 }
 async function raw(route,options={}){return request(route,options)}
+async function listStaff(){
+  const rows=await raw('/rest/v1/ru_asset_staff?select=staff_name&order=staff_name.asc');
+  if(!Array.isArray(rows))throw new Error('รายชื่อพนักงานจาก Supabase ไม่ถูกต้อง');
+  return rows.map(r=>String(r.staff_name||'')).filter(Boolean);
+}
+async function createStaff(name){
+  const value=String(name||'').trim();
+  if(!value||value.length>160)throw new Error('กรุณากรอกชื่อพนักงานไม่เกิน 160 ตัวอักษร');
+  const route='/rest/v1/ru_asset_staff?staff_name=eq.'+encodeURIComponent(value)+'&select=staff_name';
+  const existing=await raw(route);
+  if(existing.length)return value;
+  try{
+    const written=await raw('/rest/v1/ru_asset_staff?select=staff_name',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({staff_name:value})});
+    if(!Array.isArray(written)||written.length!==1||written[0].staff_name!==value)throw new Error('Supabase ไม่ยืนยันชื่อที่เพิ่ม');
+  }catch(e){
+    const retry=await raw(route);
+    if(!retry.length)throw e;
+  }
+  const checked=await raw(route);
+  if(checked.length!==1||checked[0].staff_name!==value)throw new Error('ตรวจสอบชื่อพนักงานจากฐานกลางไม่สำเร็จ');
+  return value;
+}
 async function table(path,options={}){
   return raw('/rest/v1/ru_assets'+path,{...options,headers:{'Content-Type':'application/json',Prefer:'return=representation',...(options.headers||{})}});
 }
@@ -453,6 +475,10 @@ async function readAssetsForPage(){
   if(!isPublicListing()&&(!session?.access_token||generation!==authGeneration))throw new Error('เซสชันเปลี่ยน กรุณาอ่านข้อมูลอีกครั้ง');
   assets=rows;
   try{hook?.apply?.(rows)}catch(e){throw new Error('RUAssetPage.apply ล้มเหลว: '+e.message)}
+  if(!isPublicListing()&&/\/assign\.html$/i.test(window.location.pathname)){
+    const names=await listStaff();
+    hook?.staff?.(names);
+  }
   return rows;
 }
 async function refresh(){
@@ -479,6 +505,8 @@ async function call(body){
   if(isPublicListing())throw new Error('หน้าสาธารณะอ่านข้อมูลได้อย่างเดียว');
   if(body.action==='applyAssetFields')return editBatch(body.changes,'fields');
   if(body.action==='applyAssetChanges')return editBatch(body.changes,'changes');
+  if(body.action==='getStaff')return {ok:true,staff:await listStaff()};
+  if(body.action==='createStaff')return {ok:true,name:await createStaff(body.name)};
   if(body.action==='updateAsset'){
     const saved=await updateAsset(body.key,body.changes,body.expected||{revision:body.expectedRevision,fields:body.expectedFields});
     return {ok:true,status:'success',asset:saved,revision:saved.revision};
